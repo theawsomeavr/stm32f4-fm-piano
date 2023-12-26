@@ -1,0 +1,1030 @@
+ARM GAS  /tmp/ccfcAREq.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 2
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"leds.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "src/leds.c"
+  20              		.section	.text.leds_hue,"ax",%progbits
+  21              		.align	1
+  22              		.p2align 2,,3
+  23              		.global	leds_hue
+  24              		.syntax unified
+  25              		.thumb
+  26              		.thumb_func
+  28              	leds_hue:
+  29              	.LVL0:
+  30              	.LFB134:
+   1:src/leds.c    **** #include <leds.h>
+   2:src/leds.c    **** #include <stm32f4xx.h>
+   3:src/leds.c    **** #include <string.h>
+   4:src/leds.c    **** 
+   5:src/leds.c    **** static uint8_t led_buffer[LED_COUNT * 9 + 2];
+   6:src/leds.c    **** 
+   7:src/leds.c    **** static const uint8_t led_codes[256][3] = {
+   8:src/leds.c    ****     {0b10010010, 0b01001001, 0b00100100}, {0b10010010, 0b01001001, 0b00100110}, {0b10010010, 0b0100
+   9:src/leds.c    ****     {0b10010010, 0b01001001, 0b10100100}, {0b10010010, 0b01001001, 0b10100110}, {0b10010010, 0b0100
+  10:src/leds.c    ****     {0b10010010, 0b01001101, 0b00100100}, {0b10010010, 0b01001101, 0b00100110}, {0b10010010, 0b0100
+  11:src/leds.c    ****     {0b10010010, 0b01001101, 0b10100100}, {0b10010010, 0b01001101, 0b10100110}, {0b10010010, 0b0100
+  12:src/leds.c    ****     {0b10010010, 0b01101001, 0b00100100}, {0b10010010, 0b01101001, 0b00100110}, {0b10010010, 0b0110
+  13:src/leds.c    ****     {0b10010010, 0b01101001, 0b10100100}, {0b10010010, 0b01101001, 0b10100110}, {0b10010010, 0b0110
+  14:src/leds.c    ****     {0b10010010, 0b01101101, 0b00100100}, {0b10010010, 0b01101101, 0b00100110}, {0b10010010, 0b0110
+  15:src/leds.c    ****     {0b10010010, 0b01101101, 0b10100100}, {0b10010010, 0b01101101, 0b10100110}, {0b10010010, 0b0110
+  16:src/leds.c    ****     {0b10010011, 0b01001001, 0b00100100}, {0b10010011, 0b01001001, 0b00100110}, {0b10010011, 0b0100
+  17:src/leds.c    ****     {0b10010011, 0b01001001, 0b10100100}, {0b10010011, 0b01001001, 0b10100110}, {0b10010011, 0b0100
+  18:src/leds.c    ****     {0b10010011, 0b01001101, 0b00100100}, {0b10010011, 0b01001101, 0b00100110}, {0b10010011, 0b0100
+  19:src/leds.c    ****     {0b10010011, 0b01001101, 0b10100100}, {0b10010011, 0b01001101, 0b10100110}, {0b10010011, 0b0100
+  20:src/leds.c    ****     {0b10010011, 0b01101001, 0b00100100}, {0b10010011, 0b01101001, 0b00100110}, {0b10010011, 0b0110
+  21:src/leds.c    ****     {0b10010011, 0b01101001, 0b10100100}, {0b10010011, 0b01101001, 0b10100110}, {0b10010011, 0b0110
+  22:src/leds.c    ****     {0b10010011, 0b01101101, 0b00100100}, {0b10010011, 0b01101101, 0b00100110}, {0b10010011, 0b0110
+  23:src/leds.c    ****     {0b10010011, 0b01101101, 0b10100100}, {0b10010011, 0b01101101, 0b10100110}, {0b10010011, 0b0110
+  24:src/leds.c    ****     {0b10011010, 0b01001001, 0b00100100}, {0b10011010, 0b01001001, 0b00100110}, {0b10011010, 0b0100
+  25:src/leds.c    ****     {0b10011010, 0b01001001, 0b10100100}, {0b10011010, 0b01001001, 0b10100110}, {0b10011010, 0b0100
+  26:src/leds.c    ****     {0b10011010, 0b01001101, 0b00100100}, {0b10011010, 0b01001101, 0b00100110}, {0b10011010, 0b0100
+  27:src/leds.c    ****     {0b10011010, 0b01001101, 0b10100100}, {0b10011010, 0b01001101, 0b10100110}, {0b10011010, 0b0100
+  28:src/leds.c    ****     {0b10011010, 0b01101001, 0b00100100}, {0b10011010, 0b01101001, 0b00100110}, {0b10011010, 0b0110
+ARM GAS  /tmp/ccfcAREq.s 			page 2
+
+
+  29:src/leds.c    ****     {0b10011010, 0b01101001, 0b10100100}, {0b10011010, 0b01101001, 0b10100110}, {0b10011010, 0b0110
+  30:src/leds.c    ****     {0b10011010, 0b01101101, 0b00100100}, {0b10011010, 0b01101101, 0b00100110}, {0b10011010, 0b0110
+  31:src/leds.c    ****     {0b10011010, 0b01101101, 0b10100100}, {0b10011010, 0b01101101, 0b10100110}, {0b10011010, 0b0110
+  32:src/leds.c    ****     {0b10011011, 0b01001001, 0b00100100}, {0b10011011, 0b01001001, 0b00100110}, {0b10011011, 0b0100
+  33:src/leds.c    ****     {0b10011011, 0b01001001, 0b10100100}, {0b10011011, 0b01001001, 0b10100110}, {0b10011011, 0b0100
+  34:src/leds.c    ****     {0b10011011, 0b01001101, 0b00100100}, {0b10011011, 0b01001101, 0b00100110}, {0b10011011, 0b0100
+  35:src/leds.c    ****     {0b10011011, 0b01001101, 0b10100100}, {0b10011011, 0b01001101, 0b10100110}, {0b10011011, 0b0100
+  36:src/leds.c    ****     {0b10011011, 0b01101001, 0b00100100}, {0b10011011, 0b01101001, 0b00100110}, {0b10011011, 0b0110
+  37:src/leds.c    ****     {0b10011011, 0b01101001, 0b10100100}, {0b10011011, 0b01101001, 0b10100110}, {0b10011011, 0b0110
+  38:src/leds.c    ****     {0b10011011, 0b01101101, 0b00100100}, {0b10011011, 0b01101101, 0b00100110}, {0b10011011, 0b0110
+  39:src/leds.c    ****     {0b10011011, 0b01101101, 0b10100100}, {0b10011011, 0b01101101, 0b10100110}, {0b10011011, 0b0110
+  40:src/leds.c    ****     {0b11010010, 0b01001001, 0b00100100}, {0b11010010, 0b01001001, 0b00100110}, {0b11010010, 0b0100
+  41:src/leds.c    ****     {0b11010010, 0b01001001, 0b10100100}, {0b11010010, 0b01001001, 0b10100110}, {0b11010010, 0b0100
+  42:src/leds.c    ****     {0b11010010, 0b01001101, 0b00100100}, {0b11010010, 0b01001101, 0b00100110}, {0b11010010, 0b0100
+  43:src/leds.c    ****     {0b11010010, 0b01001101, 0b10100100}, {0b11010010, 0b01001101, 0b10100110}, {0b11010010, 0b0100
+  44:src/leds.c    ****     {0b11010010, 0b01101001, 0b00100100}, {0b11010010, 0b01101001, 0b00100110}, {0b11010010, 0b0110
+  45:src/leds.c    ****     {0b11010010, 0b01101001, 0b10100100}, {0b11010010, 0b01101001, 0b10100110}, {0b11010010, 0b0110
+  46:src/leds.c    ****     {0b11010010, 0b01101101, 0b00100100}, {0b11010010, 0b01101101, 0b00100110}, {0b11010010, 0b0110
+  47:src/leds.c    ****     {0b11010010, 0b01101101, 0b10100100}, {0b11010010, 0b01101101, 0b10100110}, {0b11010010, 0b0110
+  48:src/leds.c    ****     {0b11010011, 0b01001001, 0b00100100}, {0b11010011, 0b01001001, 0b00100110}, {0b11010011, 0b0100
+  49:src/leds.c    ****     {0b11010011, 0b01001001, 0b10100100}, {0b11010011, 0b01001001, 0b10100110}, {0b11010011, 0b0100
+  50:src/leds.c    ****     {0b11010011, 0b01001101, 0b00100100}, {0b11010011, 0b01001101, 0b00100110}, {0b11010011, 0b0100
+  51:src/leds.c    ****     {0b11010011, 0b01001101, 0b10100100}, {0b11010011, 0b01001101, 0b10100110}, {0b11010011, 0b0100
+  52:src/leds.c    ****     {0b11010011, 0b01101001, 0b00100100}, {0b11010011, 0b01101001, 0b00100110}, {0b11010011, 0b0110
+  53:src/leds.c    ****     {0b11010011, 0b01101001, 0b10100100}, {0b11010011, 0b01101001, 0b10100110}, {0b11010011, 0b0110
+  54:src/leds.c    ****     {0b11010011, 0b01101101, 0b00100100}, {0b11010011, 0b01101101, 0b00100110}, {0b11010011, 0b0110
+  55:src/leds.c    ****     {0b11010011, 0b01101101, 0b10100100}, {0b11010011, 0b01101101, 0b10100110}, {0b11010011, 0b0110
+  56:src/leds.c    ****     {0b11011010, 0b01001001, 0b00100100}, {0b11011010, 0b01001001, 0b00100110}, {0b11011010, 0b0100
+  57:src/leds.c    ****     {0b11011010, 0b01001001, 0b10100100}, {0b11011010, 0b01001001, 0b10100110}, {0b11011010, 0b0100
+  58:src/leds.c    ****     {0b11011010, 0b01001101, 0b00100100}, {0b11011010, 0b01001101, 0b00100110}, {0b11011010, 0b0100
+  59:src/leds.c    ****     {0b11011010, 0b01001101, 0b10100100}, {0b11011010, 0b01001101, 0b10100110}, {0b11011010, 0b0100
+  60:src/leds.c    ****     {0b11011010, 0b01101001, 0b00100100}, {0b11011010, 0b01101001, 0b00100110}, {0b11011010, 0b0110
+  61:src/leds.c    ****     {0b11011010, 0b01101001, 0b10100100}, {0b11011010, 0b01101001, 0b10100110}, {0b11011010, 0b0110
+  62:src/leds.c    ****     {0b11011010, 0b01101101, 0b00100100}, {0b11011010, 0b01101101, 0b00100110}, {0b11011010, 0b0110
+  63:src/leds.c    ****     {0b11011010, 0b01101101, 0b10100100}, {0b11011010, 0b01101101, 0b10100110}, {0b11011010, 0b0110
+  64:src/leds.c    ****     {0b11011011, 0b01001001, 0b00100100}, {0b11011011, 0b01001001, 0b00100110}, {0b11011011, 0b0100
+  65:src/leds.c    ****     {0b11011011, 0b01001001, 0b10100100}, {0b11011011, 0b01001001, 0b10100110}, {0b11011011, 0b0100
+  66:src/leds.c    ****     {0b11011011, 0b01001101, 0b00100100}, {0b11011011, 0b01001101, 0b00100110}, {0b11011011, 0b0100
+  67:src/leds.c    ****     {0b11011011, 0b01001101, 0b10100100}, {0b11011011, 0b01001101, 0b10100110}, {0b11011011, 0b0100
+  68:src/leds.c    ****     {0b11011011, 0b01101001, 0b00100100}, {0b11011011, 0b01101001, 0b00100110}, {0b11011011, 0b0110
+  69:src/leds.c    ****     {0b11011011, 0b01101001, 0b10100100}, {0b11011011, 0b01101001, 0b10100110}, {0b11011011, 0b0110
+  70:src/leds.c    ****     {0b11011011, 0b01101101, 0b00100100}, {0b11011011, 0b01101101, 0b00100110}, {0b11011011, 0b0110
+  71:src/leds.c    ****     {0b11011011, 0b01101101, 0b10100100}, {0b11011011, 0b01101101, 0b10100110}, {0b11011011, 0b0110
+  72:src/leds.c    **** };
+  73:src/leds.c    **** 
+  74:src/leds.c    **** LedColor leds_hue(float hue){
+  31              		.loc 1 74 29 view -0
+  32              		.cfi_startproc
+  33              		@ args = 0, pretend = 0, frame = 8
+  34              		@ frame_needed = 0, uses_anonymous_args = 0
+  35              		@ link register save eliminated.
+  75:src/leds.c    ****     LedColor c = {.r = 0, .g = 0, .b = 0};
+  36              		.loc 1 75 5 view .LVU1
+  76:src/leds.c    ****     return c;
+  37              		.loc 1 76 5 view .LVU2
+  74:src/leds.c    ****     LedColor c = {.r = 0, .g = 0, .b = 0};
+  38              		.loc 1 74 29 is_stmt 0 view .LVU3
+ARM GAS  /tmp/ccfcAREq.s 			page 3
+
+
+  39 0000 82B0     		sub	sp, sp, #8
+  40              	.LCFI0:
+  41              		.cfi_def_cfa_offset 8
+  77:src/leds.c    **** }
+  42              		.loc 1 77 1 view .LVU4
+  43 0002 0020     		movs	r0, #0
+  44 0004 02B0     		add	sp, sp, #8
+  45              	.LCFI1:
+  46              		.cfi_def_cfa_offset 0
+  47              		@ sp needed
+  48 0006 7047     		bx	lr
+  49              		.cfi_endproc
+  50              	.LFE134:
+  52              		.section	.text.leds_color,"ax",%progbits
+  53              		.align	1
+  54              		.p2align 2,,3
+  55              		.global	leds_color
+  56              		.syntax unified
+  57              		.thumb
+  58              		.thumb_func
+  60              	leds_color:
+  61              	.LVL1:
+  62              	.LFB135:
+  78:src/leds.c    **** 
+  79:src/leds.c    **** LedColor leds_color(float r, float g, float b){
+  63              		.loc 1 79 47 is_stmt 1 view -0
+  64              		.cfi_startproc
+  65              		@ args = 0, pretend = 0, frame = 16
+  66              		@ frame_needed = 0, uses_anonymous_args = 0
+  67              		@ link register save eliminated.
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  68              		.loc 1 80 5 view .LVU6
+  69              		.loc 1 80 26 is_stmt 0 view .LVU7
+  70 0000 DFED107A 		vldr.32	s15, .L6
+  71              	.LVL2:
+  72              		.loc 1 80 26 view .LVU8
+  73 0004 20EE270A 		vmul.f32	s0, s0, s15
+  74              	.LVL3:
+  81:src/leds.c    ****     return c;
+  75              		.loc 1 81 5 is_stmt 1 view .LVU9
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  76              		.loc 1 80 40 is_stmt 0 view .LVU10
+  77 0008 60EEA70A 		vmul.f32	s1, s1, s15
+  78              	.LVL4:
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  79              		.loc 1 80 14 view .LVU11
+  80 000c BCEEC07A 		vcvt.u32.f32	s14, s0
+  79:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  81              		.loc 1 79 47 view .LVU12
+  82 0010 84B0     		sub	sp, sp, #16
+  83              	.LCFI2:
+  84              		.cfi_def_cfa_offset 16
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  85              		.loc 1 80 14 view .LVU13
+  86 0012 8DED007A 		vstr.32	s14, [sp]	@ int
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  87              		.loc 1 80 54 view .LVU14
+ARM GAS  /tmp/ccfcAREq.s 			page 4
+
+
+  88 0016 21EE271A 		vmul.f32	s2, s2, s15
+  89              	.LVL5:
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  90              		.loc 1 80 14 view .LVU15
+  91 001a BCEEE07A 		vcvt.u32.f32	s14, s1
+  92              		.loc 1 81 12 view .LVU16
+  93 001e 9DF80020 		ldrb	r2, [sp]	@ zero_extendqisi2
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+  94              		.loc 1 80 14 view .LVU17
+  95 0022 8DED017A 		vstr.32	s14, [sp, #4]	@ int
+  96 0026 FCEEC17A 		vcvt.u32.f32	s15, s2
+  97              		.loc 1 81 12 view .LVU18
+  98 002a 0020     		movs	r0, #0
+  99 002c 62F30700 		bfi	r0, r2, #0, #8
+ 100 0030 9DF80420 		ldrb	r2, [sp, #4]	@ zero_extendqisi2
+  80:src/leds.c    ****     LedColor c = {.r = r * 255, .g = g * 255, .b = b * 255};
+ 101              		.loc 1 80 14 view .LVU19
+ 102 0034 17EE903A 		vmov	r3, s15	@ int
+ 103              	.LVL6:
+ 104              		.loc 1 81 12 view .LVU20
+ 105 0038 62F30F20 		bfi	r0, r2, #8, #8
+  82:src/leds.c    **** }
+ 106              		.loc 1 82 1 view .LVU21
+ 107 003c 63F31740 		bfi	r0, r3, #16, #8
+ 108 0040 04B0     		add	sp, sp, #16
+ 109              	.LCFI3:
+ 110              		.cfi_def_cfa_offset 0
+ 111              		@ sp needed
+ 112 0042 7047     		bx	lr
+ 113              	.L7:
+ 114              		.align	2
+ 115              	.L6:
+ 116 0044 00007F43 		.word	1132396544
+ 117              		.cfi_endproc
+ 118              	.LFE135:
+ 120              		.section	.rodata.leds_init.str1.4,"aMS",%progbits,1
+ 121              		.align	2
+ 122              	.LC0:
+ 123 0000 92492400 		.ascii	"\222I$\000"
+ 124              		.section	.text.leds_init,"ax",%progbits
+ 125              		.align	1
+ 126              		.p2align 2,,3
+ 127              		.global	leds_init
+ 128              		.syntax unified
+ 129              		.thumb
+ 130              		.thumb_func
+ 132              	leds_init:
+ 133              	.LFB136:
+  83:src/leds.c    **** 
+  84:src/leds.c    **** void leds_init(){
+ 134              		.loc 1 84 17 is_stmt 1 view -0
+ 135              		.cfi_startproc
+ 136              		@ args = 0, pretend = 0, frame = 0
+ 137              		@ frame_needed = 0, uses_anonymous_args = 0
+ 138              		@ link register save eliminated.
+  85:src/leds.c    ****     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_DMA2EN;
+ 139              		.loc 1 85 5 view .LVU23
+ARM GAS  /tmp/ccfcAREq.s 			page 5
+
+
+ 140              		.loc 1 85 8 is_stmt 0 view .LVU24
+ 141 0000 1B48     		ldr	r0, .L12
+  86:src/leds.c    ****     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
+  87:src/leds.c    **** 
+  88:src/leds.c    ****     //PB8 to alternate function
+  89:src/leds.c    ****     GPIOB->MODER = (GPIOB->MODER & ~GPIO_MODER_MODER8) | (0b10 << GPIO_MODER_MODER8_Pos);
+ 142              		.loc 1 89 26 view .LVU25
+ 143 0002 1C49     		ldr	r1, .L12+4
+  85:src/leds.c    ****     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_DMA2EN;
+ 144              		.loc 1 85 8 view .LVU26
+ 145 0004 026B     		ldr	r2, [r0, #48]
+  90:src/leds.c    ****     //AF06 for PB8 (SPI5 tx)
+  91:src/leds.c    ****     GPIOB->AFR[1] = (GPIOB->AFR[1] & ~GPIO_AFRH_AFSEL8) | (6 << GPIO_AFRH_AFSEL8_Pos);
+  92:src/leds.c    **** 
+  93:src/leds.c    ****     //SPI in unidirection mode, prescalar of 32
+  94:src/leds.c    ****     SPI5->CR1 = SPI_CR1_BIDIMODE | SPI_CR1_BIDIOE | (0b100 << SPI_CR1_BR_Pos) | SPI_CR1_MSTR | SPI_
+ 146              		.loc 1 94 15 view .LVU27
+ 147 0006 1C4B     		ldr	r3, .L12+8
+  85:src/leds.c    ****     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
+ 148              		.loc 1 85 18 view .LVU28
+ 149 0008 42F48002 		orr	r2, r2, #4194304
+ 150 000c 42F00202 		orr	r2, r2, #2
+  84:src/leds.c    ****     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_DMA2EN;
+ 151              		.loc 1 84 17 view .LVU29
+ 152 0010 10B4     		push	{r4}
+ 153              	.LCFI4:
+ 154              		.cfi_def_cfa_offset 4
+ 155              		.cfi_offset 4, -4
+  85:src/leds.c    ****     RCC->APB2ENR |= RCC_APB2ENR_SPI5EN;
+ 156              		.loc 1 85 18 view .LVU30
+ 157 0012 0263     		str	r2, [r0, #48]
+  86:src/leds.c    **** 
+ 158              		.loc 1 86 5 is_stmt 1 view .LVU31
+  86:src/leds.c    **** 
+ 159              		.loc 1 86 8 is_stmt 0 view .LVU32
+ 160 0014 426C     		ldr	r2, [r0, #68]
+  86:src/leds.c    **** 
+ 161              		.loc 1 86 18 view .LVU33
+ 162 0016 42F48012 		orr	r2, r2, #1048576
+ 163 001a 4264     		str	r2, [r0, #68]
+  89:src/leds.c    ****     //AF06 for PB8 (SPI5 tx)
+ 164              		.loc 1 89 5 is_stmt 1 view .LVU34
+  89:src/leds.c    ****     //AF06 for PB8 (SPI5 tx)
+ 165              		.loc 1 89 26 is_stmt 0 view .LVU35
+ 166 001c 0A68     		ldr	r2, [r1]
+  89:src/leds.c    ****     //AF06 for PB8 (SPI5 tx)
+ 167              		.loc 1 89 34 view .LVU36
+ 168 001e 22F44032 		bic	r2, r2, #196608
+  89:src/leds.c    ****     //AF06 for PB8 (SPI5 tx)
+ 169              		.loc 1 89 56 view .LVU37
+ 170 0022 42F40032 		orr	r2, r2, #131072
+  89:src/leds.c    ****     //AF06 for PB8 (SPI5 tx)
+ 171              		.loc 1 89 18 view .LVU38
+ 172 0026 0A60     		str	r2, [r1]
+  91:src/leds.c    **** 
+ 173              		.loc 1 91 5 is_stmt 1 view .LVU39
+  91:src/leds.c    **** 
+ARM GAS  /tmp/ccfcAREq.s 			page 6
+
+
+ 174              		.loc 1 91 32 is_stmt 0 view .LVU40
+ 175 0028 4A6A     		ldr	r2, [r1, #36]
+  91:src/leds.c    **** 
+ 176              		.loc 1 91 36 view .LVU41
+ 177 002a 22F00F02 		bic	r2, r2, #15
+ 178              		.loc 1 94 15 view .LVU42
+ 179 002e 4CF22434 		movw	r4, #49956
+  91:src/leds.c    **** 
+ 180              		.loc 1 91 57 view .LVU43
+ 181 0032 42F00602 		orr	r2, r2, #6
+  91:src/leds.c    **** 
+ 182              		.loc 1 91 19 view .LVU44
+ 183 0036 4A62     		str	r2, [r1, #36]
+ 184              		.loc 1 94 5 is_stmt 1 view .LVU45
+ 185              		.loc 1 94 15 is_stmt 0 view .LVU46
+ 186 0038 1C60     		str	r4, [r3]
+  95:src/leds.c    ****     SPI5->CR1 |= SPI_CR1_SPE;
+ 187              		.loc 1 95 5 is_stmt 1 view .LVU47
+ 188              		.loc 1 95 9 is_stmt 0 view .LVU48
+ 189 003a 1A68     		ldr	r2, [r3]
+ 190 003c 0F49     		ldr	r1, .L12+12
+ 191 003e 104C     		ldr	r4, .L12+16
+ 192              	.LBB5:
+ 193              	.LBB6:
+ 194              	.LBB7:
+  96:src/leds.c    ****     SPI5->CR2 |= SPI_CR2_TXDMAEN; //Enable SPI DMA mode
+  97:src/leds.c    ****     leds_clear();
+  98:src/leds.c    **** }
+  99:src/leds.c    **** 
+ 100:src/leds.c    **** void leds_clear(){
+ 101:src/leds.c    ****     for(uint32_t i = 0; i != LED_COUNT * 3; i++)memcpy(led_buffer + i * 3, led_codes[0], 3);
+ 195              		.loc 1 101 49 discriminator 3 view .LVU49
+ 196 0040 0888     		ldrh	r0, [r1]	@ unaligned
+ 197 0042 8978     		ldrb	r1, [r1, #2]	@ zero_extendqisi2
+ 198              	.LBE7:
+ 199              	.LBE6:
+ 200              	.LBE5:
+  95:src/leds.c    ****     SPI5->CR1 |= SPI_CR1_SPE;
+ 201              		.loc 1 95 15 view .LVU50
+ 202 0044 42F04002 		orr	r2, r2, #64
+ 203 0048 1A60     		str	r2, [r3]
+  96:src/leds.c    ****     SPI5->CR2 |= SPI_CR2_TXDMAEN; //Enable SPI DMA mode
+ 204              		.loc 1 96 5 is_stmt 1 view .LVU51
+  96:src/leds.c    ****     SPI5->CR2 |= SPI_CR2_TXDMAEN; //Enable SPI DMA mode
+ 205              		.loc 1 96 9 is_stmt 0 view .LVU52
+ 206 004a 5A68     		ldr	r2, [r3, #4]
+  96:src/leds.c    ****     SPI5->CR2 |= SPI_CR2_TXDMAEN; //Enable SPI DMA mode
+ 207              		.loc 1 96 15 view .LVU53
+ 208 004c 42F00202 		orr	r2, r2, #2
+ 209 0050 5A60     		str	r2, [r3, #4]
+  97:src/leds.c    **** }
+ 210              		.loc 1 97 5 is_stmt 1 view .LVU54
+ 211              	.LBB10:
+ 212              	.LBI5:
+ 100:src/leds.c    ****     for(uint32_t i = 0; i != LED_COUNT * 3; i++)memcpy(led_buffer + i * 3, led_codes[0], 3);
+ 213              		.loc 1 100 6 view .LVU55
+ 214              	.LBB9:
+ARM GAS  /tmp/ccfcAREq.s 			page 7
+
+
+ 215              		.loc 1 101 5 view .LVU56
+ 216              	.LBB8:
+ 217              		.loc 1 101 9 view .LVU57
+ 218              	.LVL7:
+ 219              		.loc 1 101 27 discriminator 1 view .LVU58
+ 220 0052 2346     		mov	r3, r4
+ 221 0054 04F5A272 		add	r2, r4, #324
+ 222              	.LVL8:
+ 223              	.L9:
+ 224              		.loc 1 101 49 discriminator 3 view .LVU59
+ 225 0058 1880     		strh	r0, [r3]	@ unaligned
+ 226 005a 9970     		strb	r1, [r3, #2]
+ 227              		.loc 1 101 46 discriminator 3 view .LVU60
+ 228              		.loc 1 101 27 discriminator 1 view .LVU61
+ 229 005c 0333     		adds	r3, r3, #3
+ 230 005e 9342     		cmp	r3, r2
+ 231 0060 FAD1     		bne	.L9
+ 232              	.LBE8:
+ 102:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 233              		.loc 1 102 5 view .LVU62
+ 103:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 1] = 0;
+ 234              		.loc 1 103 5 view .LVU63
+ 102:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 235              		.loc 1 102 35 is_stmt 0 view .LVU64
+ 236 0062 0023     		movs	r3, #0
+ 237 0064 A4F84431 		strh	r3, [r4, #324]	@ movhi
+ 238              	.LBE9:
+ 239              	.LBE10:
+  98:src/leds.c    **** 
+ 240              		.loc 1 98 1 view .LVU65
+ 241 0068 5DF8044B 		ldr	r4, [sp], #4
+ 242              	.LCFI5:
+ 243              		.cfi_restore 4
+ 244              		.cfi_def_cfa_offset 0
+ 245 006c 7047     		bx	lr
+ 246              	.L13:
+ 247 006e 00BF     		.align	2
+ 248              	.L12:
+ 249 0070 00380240 		.word	1073887232
+ 250 0074 00040240 		.word	1073873920
+ 251 0078 00500140 		.word	1073827840
+ 252 007c 00000000 		.word	.LC0
+ 253 0080 00000000 		.word	led_buffer
+ 254              		.cfi_endproc
+ 255              	.LFE136:
+ 257              		.section	.text.leds_clear,"ax",%progbits
+ 258              		.align	1
+ 259              		.p2align 2,,3
+ 260              		.global	leds_clear
+ 261              		.syntax unified
+ 262              		.thumb
+ 263              		.thumb_func
+ 265              	leds_clear:
+ 266              	.LFB137:
+ 100:src/leds.c    ****     for(uint32_t i = 0; i != LED_COUNT * 3; i++)memcpy(led_buffer + i * 3, led_codes[0], 3);
+ 267              		.loc 1 100 18 is_stmt 1 view -0
+ 268              		.cfi_startproc
+ARM GAS  /tmp/ccfcAREq.s 			page 8
+
+
+ 269              		@ args = 0, pretend = 0, frame = 0
+ 270              		@ frame_needed = 0, uses_anonymous_args = 0
+ 271              		@ link register save eliminated.
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 272              		.loc 1 101 5 view .LVU67
+ 273              	.LBB11:
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 274              		.loc 1 101 9 view .LVU68
+ 275              	.LVL9:
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 276              		.loc 1 101 27 discriminator 1 view .LVU69
+ 277 0000 094B     		ldr	r3, .L18
+ 278              	.LBE11:
+ 100:src/leds.c    ****     for(uint32_t i = 0; i != LED_COUNT * 3; i++)memcpy(led_buffer + i * 3, led_codes[0], 3);
+ 279              		.loc 1 100 18 is_stmt 0 view .LVU70
+ 280 0002 10B4     		push	{r4}
+ 281              	.LCFI6:
+ 282              		.cfi_def_cfa_offset 4
+ 283              		.cfi_offset 4, -4
+ 284 0004 094C     		ldr	r4, .L18+4
+ 285              	.LBB12:
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 286              		.loc 1 101 49 discriminator 3 view .LVU71
+ 287 0006 1888     		ldrh	r0, [r3]	@ unaligned
+ 288 0008 9978     		ldrb	r1, [r3, #2]	@ zero_extendqisi2
+ 289 000a 04F5A272 		add	r2, r4, #324
+ 290 000e 2346     		mov	r3, r4
+ 291              	.LVL10:
+ 292              	.L15:
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 293              		.loc 1 101 49 is_stmt 1 discriminator 3 view .LVU72
+ 294 0010 1880     		strh	r0, [r3]	@ unaligned
+ 295 0012 9970     		strb	r1, [r3, #2]
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 296              		.loc 1 101 46 discriminator 3 view .LVU73
+ 101:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 297              		.loc 1 101 27 discriminator 1 view .LVU74
+ 298 0014 0333     		adds	r3, r3, #3
+ 299 0016 9342     		cmp	r3, r2
+ 300 0018 FAD1     		bne	.L15
+ 301              	.LBE12:
+ 102:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 1] = 0;
+ 302              		.loc 1 102 5 view .LVU75
+ 303              		.loc 1 103 5 view .LVU76
+ 102:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 1] = 0;
+ 304              		.loc 1 102 35 is_stmt 0 view .LVU77
+ 305 001a 0023     		movs	r3, #0
+ 306 001c A4F84431 		strh	r3, [r4, #324]	@ movhi
+ 104:src/leds.c    **** }
+ 307              		.loc 1 104 1 view .LVU78
+ 308 0020 5DF8044B 		ldr	r4, [sp], #4
+ 309              	.LCFI7:
+ 310              		.cfi_restore 4
+ 311              		.cfi_def_cfa_offset 0
+ 312 0024 7047     		bx	lr
+ 313              	.L19:
+ 314 0026 00BF     		.align	2
+ARM GAS  /tmp/ccfcAREq.s 			page 9
+
+
+ 315              	.L18:
+ 316 0028 00000000 		.word	.LC0
+ 317 002c 00000000 		.word	led_buffer
+ 318              		.cfi_endproc
+ 319              	.LFE137:
+ 321              		.section	.text.leds_set,"ax",%progbits
+ 322              		.align	1
+ 323              		.p2align 2,,3
+ 324              		.global	leds_set
+ 325              		.syntax unified
+ 326              		.thumb
+ 327              		.thumb_func
+ 329              	leds_set:
+ 330              	.LVL11:
+ 331              	.LFB138:
+ 105:src/leds.c    **** 
+ 106:src/leds.c    **** void leds_set(LedColor color, uint8_t led){
+ 332              		.loc 1 106 43 is_stmt 1 view -0
+ 333              		.cfi_startproc
+ 334              		@ args = 0, pretend = 0, frame = 8
+ 335              		@ frame_needed = 0, uses_anonymous_args = 0
+ 107:src/leds.c    ****     uint8_t *dest = led_buffer + led * 9;
+ 336              		.loc 1 107 5 view .LVU80
+ 106:src/leds.c    ****     uint8_t *dest = led_buffer + led * 9;
+ 337              		.loc 1 106 43 is_stmt 0 view .LVU81
+ 338 0000 10B5     		push	{r4, lr}
+ 339              	.LCFI8:
+ 340              		.cfi_def_cfa_offset 8
+ 341              		.cfi_offset 4, -8
+ 342              		.cfi_offset 14, -4
+ 343              	.LBB13:
+ 108:src/leds.c    ****     for(uint8_t i = 0; i != 3; i++){
+ 109:src/leds.c    ****         dest[i]     = led_codes[color.g][i];
+ 344              		.loc 1 109 21 view .LVU82
+ 345 0002 C0F3072C 		ubfx	ip, r0, #8, #8
+ 110:src/leds.c    ****         dest[i + 3] = led_codes[color.r][i];
+ 346              		.loc 1 110 21 view .LVU83
+ 347 0006 C2B2     		uxtb	r2, r0
+ 111:src/leds.c    ****         dest[i + 6] = led_codes[color.b][i];
+ 348              		.loc 1 111 21 view .LVU84
+ 349 0008 C0F30743 		ubfx	r3, r0, #16, #8
+ 109:src/leds.c    ****         dest[i + 3] = led_codes[color.r][i];
+ 350              		.loc 1 109 21 view .LVU85
+ 351 000c 0CEB4C0C 		add	ip, ip, ip, lsl #1
+ 352 0010 1248     		ldr	r0, .L22
+ 353              	.LBE13:
+ 107:src/leds.c    ****     for(uint8_t i = 0; i != 3; i++){
+ 354              		.loc 1 107 14 view .LVU86
+ 355 0012 134C     		ldr	r4, .L22+4
+ 107:src/leds.c    ****     for(uint8_t i = 0; i != 3; i++){
+ 356              		.loc 1 107 38 view .LVU87
+ 357 0014 01EBC101 		add	r1, r1, r1, lsl #3
+ 358              	.LVL12:
+ 359              	.LBB14:
+ 109:src/leds.c    ****         dest[i + 3] = led_codes[color.r][i];
+ 360              		.loc 1 109 21 view .LVU88
+ 361 0018 0CEB000E 		add	lr, ip, r0
+ARM GAS  /tmp/ccfcAREq.s 			page 10
+
+
+ 362 001c 30F80CC0 		ldrh	ip, [r0, ip]	@ unaligned
+ 363 0020 24F801C0 		strh	ip, [r4, r1]	@ unaligned
+ 364              	.LBE14:
+ 107:src/leds.c    ****     for(uint8_t i = 0; i != 3; i++){
+ 365              		.loc 1 107 14 view .LVU89
+ 366 0024 2144     		add	r1, r1, r4
+ 367              	.LVL13:
+ 108:src/leds.c    ****         dest[i]     = led_codes[color.g][i];
+ 368              		.loc 1 108 5 is_stmt 1 view .LVU90
+ 369              	.LBB15:
+ 108:src/leds.c    ****         dest[i]     = led_codes[color.g][i];
+ 370              		.loc 1 108 9 view .LVU91
+ 108:src/leds.c    ****         dest[i]     = led_codes[color.g][i];
+ 371              		.loc 1 108 26 discriminator 1 view .LVU92
+ 109:src/leds.c    ****         dest[i + 3] = led_codes[color.r][i];
+ 372              		.loc 1 109 21 is_stmt 0 view .LVU93
+ 373 0026 9EF802C0 		ldrb	ip, [lr, #2]	@ zero_extendqisi2
+ 374 002a 81F802C0 		strb	ip, [r1, #2]
+ 110:src/leds.c    ****         dest[i + 6] = led_codes[color.b][i];
+ 375              		.loc 1 110 21 view .LVU94
+ 376 002e 02EB4202 		add	r2, r2, r2, lsl #1
+ 377 0032 02EB000C 		add	ip, r2, r0
+ 378 0036 825A     		ldrh	r2, [r0, r2]	@ unaligned
+ 379 0038 A1F80320 		strh	r2, [r1, #3]	@ unaligned
+ 380 003c 9CF80220 		ldrb	r2, [ip, #2]	@ zero_extendqisi2
+ 381 0040 4A71     		strb	r2, [r1, #5]
+ 382              		.loc 1 111 21 view .LVU95
+ 383 0042 03EB4303 		add	r3, r3, r3, lsl #1
+ 384 0046 1A18     		adds	r2, r3, r0
+ 385 0048 C05A     		ldrh	r0, [r0, r3]	@ unaligned
+ 386 004a 9278     		ldrb	r2, [r2, #2]	@ zero_extendqisi2
+ 387 004c 0A72     		strb	r2, [r1, #8]
+ 388              	.LVL14:
+ 389              		.loc 1 111 21 view .LVU96
+ 390              	.LBE15:
+ 112:src/leds.c    ****     }
+ 113:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 0] = 0;
+ 391              		.loc 1 113 5 is_stmt 1 view .LVU97
+ 114:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 1] = 0;
+ 392              		.loc 1 114 5 view .LVU98
+ 106:src/leds.c    ****     uint8_t *dest = led_buffer + led * 9;
+ 393              		.loc 1 106 43 is_stmt 0 view .LVU99
+ 394 004e 82B0     		sub	sp, sp, #8
+ 395              	.LCFI9:
+ 396              		.cfi_def_cfa_offset 16
+ 113:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 1] = 0;
+ 397              		.loc 1 113 35 view .LVU100
+ 398 0050 0023     		movs	r3, #0
+ 399              	.LBB16:
+ 111:src/leds.c    ****     }
+ 400              		.loc 1 111 21 view .LVU101
+ 401 0052 C880     		strh	r0, [r1, #6]	@ unaligned
+ 402              	.LBE16:
+ 113:src/leds.c    ****     led_buffer[LED_COUNT * 9 + 1] = 0;
+ 403              		.loc 1 113 35 view .LVU102
+ 404 0054 A4F84431 		strh	r3, [r4, #324]	@ movhi
+ 115:src/leds.c    **** }
+ARM GAS  /tmp/ccfcAREq.s 			page 11
+
+
+ 405              		.loc 1 115 1 view .LVU103
+ 406 0058 02B0     		add	sp, sp, #8
+ 407              	.LCFI10:
+ 408              		.cfi_def_cfa_offset 8
+ 409              		@ sp needed
+ 410 005a 10BD     		pop	{r4, pc}
+ 411              	.L23:
+ 412              		.align	2
+ 413              	.L22:
+ 414 005c 00000000 		.word	led_codes
+ 415 0060 00000000 		.word	led_buffer
+ 416              		.cfi_endproc
+ 417              	.LFE138:
+ 419              		.section	.text.leds_show,"ax",%progbits
+ 420              		.align	1
+ 421              		.p2align 2,,3
+ 422              		.global	leds_show
+ 423              		.syntax unified
+ 424              		.thumb
+ 425              		.thumb_func
+ 427              	leds_show:
+ 428              	.LFB139:
+ 116:src/leds.c    **** 
+ 117:src/leds.c    **** void leds_show(){
+ 429              		.loc 1 117 17 is_stmt 1 view -0
+ 430              		.cfi_startproc
+ 431              		@ args = 0, pretend = 0, frame = 0
+ 432              		@ frame_needed = 0, uses_anonymous_args = 0
+ 433              		@ link register save eliminated.
+ 118:src/leds.c    ****     DMA2->HIFCR = DMA_HIFCR_CTCIF5;
+ 434              		.loc 1 118 5 view .LVU105
+ 435              		.loc 1 118 17 is_stmt 0 view .LVU106
+ 436 0000 0D4B     		ldr	r3, .L26
+ 119:src/leds.c    **** 
+ 120:src/leds.c    ****     //Channel 5 (SPI5 TX); 8 bit size; Mem -> Perif
+ 121:src/leds.c    ****     DMA2_Stream5->CR = (5 << DMA_SxCR_CHSEL_Pos)
+ 122:src/leds.c    ****                        | DMA_SxCR_MINC
+ 123:src/leds.c    ****                        | (0b00 << DMA_SxCR_MSIZE_Pos)
+ 124:src/leds.c    ****                        | (0b10 << DMA_SxCR_PL_Pos)
+ 125:src/leds.c    ****                        | (0b01 << DMA_SxCR_DIR_Pos);
+ 126:src/leds.c    **** 
+ 127:src/leds.c    ****     DMA2_Stream5->NDTR = 9 * LED_COUNT + 2;
+ 128:src/leds.c    ****     DMA2_Stream5->M0AR = (uint32_t)led_buffer;
+ 129:src/leds.c    ****     DMA2_Stream5->PAR  = (uint32_t)&SPI5->DR;
+ 437              		.loc 1 129 24 view .LVU107
+ 438 0002 0E4A     		ldr	r2, .L26+4
+ 128:src/leds.c    ****     DMA2_Stream5->PAR  = (uint32_t)&SPI5->DR;
+ 439              		.loc 1 128 26 view .LVU108
+ 440 0004 0E49     		ldr	r1, .L26+8
+ 118:src/leds.c    ****     DMA2->HIFCR = DMA_HIFCR_CTCIF5;
+ 441              		.loc 1 118 17 view .LVU109
+ 442 0006 4FF40060 		mov	r0, #2048
+ 117:src/leds.c    ****     DMA2->HIFCR = DMA_HIFCR_CTCIF5;
+ 443              		.loc 1 117 17 view .LVU110
+ 444 000a 10B4     		push	{r4}
+ 445              	.LCFI11:
+ 446              		.cfi_def_cfa_offset 4
+ARM GAS  /tmp/ccfcAREq.s 			page 12
+
+
+ 447              		.cfi_offset 4, -4
+ 118:src/leds.c    **** 
+ 448              		.loc 1 118 17 view .LVU111
+ 449 000c D860     		str	r0, [r3, #12]
+ 121:src/leds.c    ****                        | DMA_SxCR_MINC
+ 450              		.loc 1 121 5 is_stmt 1 view .LVU112
+ 121:src/leds.c    ****                        | DMA_SxCR_MINC
+ 451              		.loc 1 121 22 is_stmt 0 view .LVU113
+ 452 000e 0D4C     		ldr	r4, .L26+12
+ 453 0010 C3F88840 		str	r4, [r3, #136]
+ 127:src/leds.c    ****     DMA2_Stream5->M0AR = (uint32_t)led_buffer;
+ 454              		.loc 1 127 5 is_stmt 1 view .LVU114
+ 127:src/leds.c    ****     DMA2_Stream5->M0AR = (uint32_t)led_buffer;
+ 455              		.loc 1 127 24 is_stmt 0 view .LVU115
+ 456 0014 4FF4A370 		mov	r0, #326
+ 457 0018 C3F88C00 		str	r0, [r3, #140]
+ 128:src/leds.c    ****     DMA2_Stream5->PAR  = (uint32_t)&SPI5->DR;
+ 458              		.loc 1 128 5 is_stmt 1 view .LVU116
+ 128:src/leds.c    ****     DMA2_Stream5->PAR  = (uint32_t)&SPI5->DR;
+ 459              		.loc 1 128 24 is_stmt 0 view .LVU117
+ 460 001c C3F89410 		str	r1, [r3, #148]
+ 461              		.loc 1 129 5 is_stmt 1 view .LVU118
+ 462              		.loc 1 129 24 is_stmt 0 view .LVU119
+ 463 0020 C3F89020 		str	r2, [r3, #144]
+ 130:src/leds.c    **** 
+ 131:src/leds.c    ****     DMA2_Stream5->CR |= DMA_SxCR_EN;
+ 464              		.loc 1 131 5 is_stmt 1 view .LVU120
+ 465              		.loc 1 131 17 is_stmt 0 view .LVU121
+ 466 0024 D3F88820 		ldr	r2, [r3, #136]
+ 132:src/leds.c    **** }
+ 467              		.loc 1 132 1 view .LVU122
+ 468 0028 5DF8044B 		ldr	r4, [sp], #4
+ 469              	.LCFI12:
+ 470              		.cfi_restore 4
+ 471              		.cfi_def_cfa_offset 0
+ 131:src/leds.c    **** }
+ 472              		.loc 1 131 22 view .LVU123
+ 473 002c 42F00102 		orr	r2, r2, #1
+ 474 0030 C3F88820 		str	r2, [r3, #136]
+ 475              		.loc 1 132 1 view .LVU124
+ 476 0034 7047     		bx	lr
+ 477              	.L27:
+ 478 0036 00BF     		.align	2
+ 479              	.L26:
+ 480 0038 00640240 		.word	1073898496
+ 481 003c 0C500140 		.word	1073827852
+ 482 0040 00000000 		.word	led_buffer
+ 483 0044 4004020A 		.word	167904320
+ 484              		.cfi_endproc
+ 485              	.LFE139:
+ 487              		.section	.rodata.led_codes,"a"
+ 488              		.align	2
+ 491              	led_codes:
+ 492 0000 924924   		.ascii	"\222I$"
+ 493 0003 924926   		.ascii	"\222I&"
+ 494 0006 924934   		.ascii	"\222I4"
+ 495 0009 924936   		.ascii	"\222I6"
+ARM GAS  /tmp/ccfcAREq.s 			page 13
+
+
+ 496 000c 9249A4   		.ascii	"\222I\244"
+ 497 000f 9249A6   		.ascii	"\222I\246"
+ 498 0012 9249B4   		.ascii	"\222I\264"
+ 499 0015 9249B6   		.ascii	"\222I\266"
+ 500 0018 924D24   		.ascii	"\222M$"
+ 501 001b 924D26   		.ascii	"\222M&"
+ 502 001e 924D34   		.ascii	"\222M4"
+ 503 0021 924D36   		.ascii	"\222M6"
+ 504 0024 924DA4   		.ascii	"\222M\244"
+ 505 0027 924DA6   		.ascii	"\222M\246"
+ 506 002a 924DB4   		.ascii	"\222M\264"
+ 507 002d 924DB6   		.ascii	"\222M\266"
+ 508 0030 926924   		.ascii	"\222i$"
+ 509 0033 926926   		.ascii	"\222i&"
+ 510 0036 926934   		.ascii	"\222i4"
+ 511 0039 926936   		.ascii	"\222i6"
+ 512 003c 9269A4   		.ascii	"\222i\244"
+ 513 003f 9269A6   		.ascii	"\222i\246"
+ 514 0042 9269B4   		.ascii	"\222i\264"
+ 515 0045 9269B6   		.ascii	"\222i\266"
+ 516 0048 926D24   		.ascii	"\222m$"
+ 517 004b 926D26   		.ascii	"\222m&"
+ 518 004e 926D34   		.ascii	"\222m4"
+ 519 0051 926D36   		.ascii	"\222m6"
+ 520 0054 926DA4   		.ascii	"\222m\244"
+ 521 0057 926DA6   		.ascii	"\222m\246"
+ 522 005a 926DB4   		.ascii	"\222m\264"
+ 523 005d 926DB6   		.ascii	"\222m\266"
+ 524 0060 934924   		.ascii	"\223I$"
+ 525 0063 934926   		.ascii	"\223I&"
+ 526 0066 934934   		.ascii	"\223I4"
+ 527 0069 934936   		.ascii	"\223I6"
+ 528 006c 9349A4   		.ascii	"\223I\244"
+ 529 006f 9349A6   		.ascii	"\223I\246"
+ 530 0072 9349B4   		.ascii	"\223I\264"
+ 531 0075 9349B6   		.ascii	"\223I\266"
+ 532 0078 934D24   		.ascii	"\223M$"
+ 533 007b 934D26   		.ascii	"\223M&"
+ 534 007e 934D34   		.ascii	"\223M4"
+ 535 0081 934D36   		.ascii	"\223M6"
+ 536 0084 934DA4   		.ascii	"\223M\244"
+ 537 0087 934DA6   		.ascii	"\223M\246"
+ 538 008a 934DB4   		.ascii	"\223M\264"
+ 539 008d 934DB6   		.ascii	"\223M\266"
+ 540 0090 936924   		.ascii	"\223i$"
+ 541 0093 936926   		.ascii	"\223i&"
+ 542 0096 936934   		.ascii	"\223i4"
+ 543 0099 936936   		.ascii	"\223i6"
+ 544 009c 9369A4   		.ascii	"\223i\244"
+ 545 009f 9369A6   		.ascii	"\223i\246"
+ 546 00a2 9369B4   		.ascii	"\223i\264"
+ 547 00a5 9369B6   		.ascii	"\223i\266"
+ 548 00a8 936D24   		.ascii	"\223m$"
+ 549 00ab 936D26   		.ascii	"\223m&"
+ 550 00ae 936D34   		.ascii	"\223m4"
+ 551 00b1 936D36   		.ascii	"\223m6"
+ 552 00b4 936DA4   		.ascii	"\223m\244"
+ARM GAS  /tmp/ccfcAREq.s 			page 14
+
+
+ 553 00b7 936DA6   		.ascii	"\223m\246"
+ 554 00ba 936DB4   		.ascii	"\223m\264"
+ 555 00bd 936DB6   		.ascii	"\223m\266"
+ 556 00c0 9A4924   		.ascii	"\232I$"
+ 557 00c3 9A4926   		.ascii	"\232I&"
+ 558 00c6 9A4934   		.ascii	"\232I4"
+ 559 00c9 9A4936   		.ascii	"\232I6"
+ 560 00cc 9A49A4   		.ascii	"\232I\244"
+ 561 00cf 9A49A6   		.ascii	"\232I\246"
+ 562 00d2 9A49B4   		.ascii	"\232I\264"
+ 563 00d5 9A49B6   		.ascii	"\232I\266"
+ 564 00d8 9A4D24   		.ascii	"\232M$"
+ 565 00db 9A4D26   		.ascii	"\232M&"
+ 566 00de 9A4D34   		.ascii	"\232M4"
+ 567 00e1 9A4D36   		.ascii	"\232M6"
+ 568 00e4 9A4DA4   		.ascii	"\232M\244"
+ 569 00e7 9A4DA6   		.ascii	"\232M\246"
+ 570 00ea 9A4DB4   		.ascii	"\232M\264"
+ 571 00ed 9A4DB6   		.ascii	"\232M\266"
+ 572 00f0 9A6924   		.ascii	"\232i$"
+ 573 00f3 9A6926   		.ascii	"\232i&"
+ 574 00f6 9A6934   		.ascii	"\232i4"
+ 575 00f9 9A6936   		.ascii	"\232i6"
+ 576 00fc 9A69A4   		.ascii	"\232i\244"
+ 577 00ff 9A69A6   		.ascii	"\232i\246"
+ 578 0102 9A69B4   		.ascii	"\232i\264"
+ 579 0105 9A69B6   		.ascii	"\232i\266"
+ 580 0108 9A6D24   		.ascii	"\232m$"
+ 581 010b 9A6D26   		.ascii	"\232m&"
+ 582 010e 9A6D34   		.ascii	"\232m4"
+ 583 0111 9A6D36   		.ascii	"\232m6"
+ 584 0114 9A6DA4   		.ascii	"\232m\244"
+ 585 0117 9A6DA6   		.ascii	"\232m\246"
+ 586 011a 9A6DB4   		.ascii	"\232m\264"
+ 587 011d 9A6DB6   		.ascii	"\232m\266"
+ 588 0120 9B4924   		.ascii	"\233I$"
+ 589 0123 9B4926   		.ascii	"\233I&"
+ 590 0126 9B4934   		.ascii	"\233I4"
+ 591 0129 9B4936   		.ascii	"\233I6"
+ 592 012c 9B49A4   		.ascii	"\233I\244"
+ 593 012f 9B49A6   		.ascii	"\233I\246"
+ 594 0132 9B49B4   		.ascii	"\233I\264"
+ 595 0135 9B49B6   		.ascii	"\233I\266"
+ 596 0138 9B4D24   		.ascii	"\233M$"
+ 597 013b 9B4D26   		.ascii	"\233M&"
+ 598 013e 9B4D34   		.ascii	"\233M4"
+ 599 0141 9B4D36   		.ascii	"\233M6"
+ 600 0144 9B4DA4   		.ascii	"\233M\244"
+ 601 0147 9B4DA6   		.ascii	"\233M\246"
+ 602 014a 9B4DB4   		.ascii	"\233M\264"
+ 603 014d 9B4DB6   		.ascii	"\233M\266"
+ 604 0150 9B6924   		.ascii	"\233i$"
+ 605 0153 9B6926   		.ascii	"\233i&"
+ 606 0156 9B6934   		.ascii	"\233i4"
+ 607 0159 9B6936   		.ascii	"\233i6"
+ 608 015c 9B69A4   		.ascii	"\233i\244"
+ 609 015f 9B69A6   		.ascii	"\233i\246"
+ARM GAS  /tmp/ccfcAREq.s 			page 15
+
+
+ 610 0162 9B69B4   		.ascii	"\233i\264"
+ 611 0165 9B69B6   		.ascii	"\233i\266"
+ 612 0168 9B6D24   		.ascii	"\233m$"
+ 613 016b 9B6D26   		.ascii	"\233m&"
+ 614 016e 9B6D34   		.ascii	"\233m4"
+ 615 0171 9B6D36   		.ascii	"\233m6"
+ 616 0174 9B6DA4   		.ascii	"\233m\244"
+ 617 0177 9B6DA6   		.ascii	"\233m\246"
+ 618 017a 9B6DB4   		.ascii	"\233m\264"
+ 619 017d 9B6DB6   		.ascii	"\233m\266"
+ 620 0180 D24924   		.ascii	"\322I$"
+ 621 0183 D24926   		.ascii	"\322I&"
+ 622 0186 D24934   		.ascii	"\322I4"
+ 623 0189 D24936   		.ascii	"\322I6"
+ 624 018c D249A4   		.ascii	"\322I\244"
+ 625 018f D249A6   		.ascii	"\322I\246"
+ 626 0192 D249B4   		.ascii	"\322I\264"
+ 627 0195 D249B6   		.ascii	"\322I\266"
+ 628 0198 D24D24   		.ascii	"\322M$"
+ 629 019b D24D26   		.ascii	"\322M&"
+ 630 019e D24D34   		.ascii	"\322M4"
+ 631 01a1 D24D36   		.ascii	"\322M6"
+ 632 01a4 D24DA4   		.ascii	"\322M\244"
+ 633 01a7 D24DA6   		.ascii	"\322M\246"
+ 634 01aa D24DB4   		.ascii	"\322M\264"
+ 635 01ad D24DB6   		.ascii	"\322M\266"
+ 636 01b0 D26924   		.ascii	"\322i$"
+ 637 01b3 D26926   		.ascii	"\322i&"
+ 638 01b6 D26934   		.ascii	"\322i4"
+ 639 01b9 D26936   		.ascii	"\322i6"
+ 640 01bc D269A4   		.ascii	"\322i\244"
+ 641 01bf D269A6   		.ascii	"\322i\246"
+ 642 01c2 D269B4   		.ascii	"\322i\264"
+ 643 01c5 D269B6   		.ascii	"\322i\266"
+ 644 01c8 D26D24   		.ascii	"\322m$"
+ 645 01cb D26D26   		.ascii	"\322m&"
+ 646 01ce D26D34   		.ascii	"\322m4"
+ 647 01d1 D26D36   		.ascii	"\322m6"
+ 648 01d4 D26DA4   		.ascii	"\322m\244"
+ 649 01d7 D26DA6   		.ascii	"\322m\246"
+ 650 01da D26DB4   		.ascii	"\322m\264"
+ 651 01dd D26DB6   		.ascii	"\322m\266"
+ 652 01e0 D34924   		.ascii	"\323I$"
+ 653 01e3 D34926   		.ascii	"\323I&"
+ 654 01e6 D34934   		.ascii	"\323I4"
+ 655 01e9 D34936   		.ascii	"\323I6"
+ 656 01ec D349A4   		.ascii	"\323I\244"
+ 657 01ef D349A6   		.ascii	"\323I\246"
+ 658 01f2 D349B4   		.ascii	"\323I\264"
+ 659 01f5 D349B6   		.ascii	"\323I\266"
+ 660 01f8 D34D24   		.ascii	"\323M$"
+ 661 01fb D34D26   		.ascii	"\323M&"
+ 662 01fe D34D34   		.ascii	"\323M4"
+ 663 0201 D34D36   		.ascii	"\323M6"
+ 664 0204 D34DA4   		.ascii	"\323M\244"
+ 665 0207 D34DA6   		.ascii	"\323M\246"
+ 666 020a D34DB4   		.ascii	"\323M\264"
+ARM GAS  /tmp/ccfcAREq.s 			page 16
+
+
+ 667 020d D34DB6   		.ascii	"\323M\266"
+ 668 0210 D36924   		.ascii	"\323i$"
+ 669 0213 D36926   		.ascii	"\323i&"
+ 670 0216 D36934   		.ascii	"\323i4"
+ 671 0219 D36936   		.ascii	"\323i6"
+ 672 021c D369A4   		.ascii	"\323i\244"
+ 673 021f D369A6   		.ascii	"\323i\246"
+ 674 0222 D369B4   		.ascii	"\323i\264"
+ 675 0225 D369B6   		.ascii	"\323i\266"
+ 676 0228 D36D24   		.ascii	"\323m$"
+ 677 022b D36D26   		.ascii	"\323m&"
+ 678 022e D36D34   		.ascii	"\323m4"
+ 679 0231 D36D36   		.ascii	"\323m6"
+ 680 0234 D36DA4   		.ascii	"\323m\244"
+ 681 0237 D36DA6   		.ascii	"\323m\246"
+ 682 023a D36DB4   		.ascii	"\323m\264"
+ 683 023d D36DB6   		.ascii	"\323m\266"
+ 684 0240 DA4924   		.ascii	"\332I$"
+ 685 0243 DA4926   		.ascii	"\332I&"
+ 686 0246 DA4934   		.ascii	"\332I4"
+ 687 0249 DA4936   		.ascii	"\332I6"
+ 688 024c DA49A4   		.ascii	"\332I\244"
+ 689 024f DA49A6   		.ascii	"\332I\246"
+ 690 0252 DA49B4   		.ascii	"\332I\264"
+ 691 0255 DA49B6   		.ascii	"\332I\266"
+ 692 0258 DA4D24   		.ascii	"\332M$"
+ 693 025b DA4D26   		.ascii	"\332M&"
+ 694 025e DA4D34   		.ascii	"\332M4"
+ 695 0261 DA4D36   		.ascii	"\332M6"
+ 696 0264 DA4DA4   		.ascii	"\332M\244"
+ 697 0267 DA4DA6   		.ascii	"\332M\246"
+ 698 026a DA4DB4   		.ascii	"\332M\264"
+ 699 026d DA4DB6   		.ascii	"\332M\266"
+ 700 0270 DA6924   		.ascii	"\332i$"
+ 701 0273 DA6926   		.ascii	"\332i&"
+ 702 0276 DA6934   		.ascii	"\332i4"
+ 703 0279 DA6936   		.ascii	"\332i6"
+ 704 027c DA69A4   		.ascii	"\332i\244"
+ 705 027f DA69A6   		.ascii	"\332i\246"
+ 706 0282 DA69B4   		.ascii	"\332i\264"
+ 707 0285 DA69B6   		.ascii	"\332i\266"
+ 708 0288 DA6D24   		.ascii	"\332m$"
+ 709 028b DA6D26   		.ascii	"\332m&"
+ 710 028e DA6D34   		.ascii	"\332m4"
+ 711 0291 DA6D36   		.ascii	"\332m6"
+ 712 0294 DA6DA4   		.ascii	"\332m\244"
+ 713 0297 DA6DA6   		.ascii	"\332m\246"
+ 714 029a DA6DB4   		.ascii	"\332m\264"
+ 715 029d DA6DB6   		.ascii	"\332m\266"
+ 716 02a0 DB4924   		.ascii	"\333I$"
+ 717 02a3 DB4926   		.ascii	"\333I&"
+ 718 02a6 DB4934   		.ascii	"\333I4"
+ 719 02a9 DB4936   		.ascii	"\333I6"
+ 720 02ac DB49A4   		.ascii	"\333I\244"
+ 721 02af DB49A6   		.ascii	"\333I\246"
+ 722 02b2 DB49B4   		.ascii	"\333I\264"
+ 723 02b5 DB49B6   		.ascii	"\333I\266"
+ARM GAS  /tmp/ccfcAREq.s 			page 17
+
+
+ 724 02b8 DB4D24   		.ascii	"\333M$"
+ 725 02bb DB4D26   		.ascii	"\333M&"
+ 726 02be DB4D34   		.ascii	"\333M4"
+ 727 02c1 DB4D36   		.ascii	"\333M6"
+ 728 02c4 DB4DA4   		.ascii	"\333M\244"
+ 729 02c7 DB4DA6   		.ascii	"\333M\246"
+ 730 02ca DB4DB4   		.ascii	"\333M\264"
+ 731 02cd DB4DB6   		.ascii	"\333M\266"
+ 732 02d0 DB6924   		.ascii	"\333i$"
+ 733 02d3 DB6926   		.ascii	"\333i&"
+ 734 02d6 DB6934   		.ascii	"\333i4"
+ 735 02d9 DB6936   		.ascii	"\333i6"
+ 736 02dc DB69A4   		.ascii	"\333i\244"
+ 737 02df DB69A6   		.ascii	"\333i\246"
+ 738 02e2 DB69B4   		.ascii	"\333i\264"
+ 739 02e5 DB69B6   		.ascii	"\333i\266"
+ 740 02e8 DB6D24   		.ascii	"\333m$"
+ 741 02eb DB6D26   		.ascii	"\333m&"
+ 742 02ee DB6D34   		.ascii	"\333m4"
+ 743 02f1 DB6D36   		.ascii	"\333m6"
+ 744 02f4 DB6DA4   		.ascii	"\333m\244"
+ 745 02f7 DB6DA6   		.ascii	"\333m\246"
+ 746 02fa DB6DB4   		.ascii	"\333m\264"
+ 747 02fd DB6DB6   		.ascii	"\333m\266"
+ 748              		.section	.bss.led_buffer,"aw",%nobits
+ 749              		.align	2
+ 752              	led_buffer:
+ 753 0000 00000000 		.space	326
+ 753      00000000 
+ 753      00000000 
+ 753      00000000 
+ 753      00000000 
+ 754              		.text
+ 755              	.Letext0:
+ 756              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 757              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 758              		.file 4 "src/leds.h"
+ 759              		.file 5 "Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f411xe.h"
+ARM GAS  /tmp/ccfcAREq.s 			page 18
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 leds.c
+     /tmp/ccfcAREq.s:21     .text.leds_hue:00000000 $t
+     /tmp/ccfcAREq.s:28     .text.leds_hue:00000000 leds_hue
+     /tmp/ccfcAREq.s:53     .text.leds_color:00000000 $t
+     /tmp/ccfcAREq.s:60     .text.leds_color:00000000 leds_color
+     /tmp/ccfcAREq.s:116    .text.leds_color:00000044 $d
+     /tmp/ccfcAREq.s:121    .rodata.leds_init.str1.4:00000000 $d
+     /tmp/ccfcAREq.s:125    .text.leds_init:00000000 $t
+     /tmp/ccfcAREq.s:132    .text.leds_init:00000000 leds_init
+     /tmp/ccfcAREq.s:249    .text.leds_init:00000070 $d
+     /tmp/ccfcAREq.s:752    .bss.led_buffer:00000000 led_buffer
+     /tmp/ccfcAREq.s:258    .text.leds_clear:00000000 $t
+     /tmp/ccfcAREq.s:265    .text.leds_clear:00000000 leds_clear
+     /tmp/ccfcAREq.s:316    .text.leds_clear:00000028 $d
+     /tmp/ccfcAREq.s:322    .text.leds_set:00000000 $t
+     /tmp/ccfcAREq.s:329    .text.leds_set:00000000 leds_set
+     /tmp/ccfcAREq.s:414    .text.leds_set:0000005c $d
+     /tmp/ccfcAREq.s:491    .rodata.led_codes:00000000 led_codes
+     /tmp/ccfcAREq.s:420    .text.leds_show:00000000 $t
+     /tmp/ccfcAREq.s:427    .text.leds_show:00000000 leds_show
+     /tmp/ccfcAREq.s:480    .text.leds_show:00000038 $d
+     /tmp/ccfcAREq.s:488    .rodata.led_codes:00000000 $d
+     /tmp/ccfcAREq.s:749    .bss.led_buffer:00000000 $d
+
+NO UNDEFINED SYMBOLS

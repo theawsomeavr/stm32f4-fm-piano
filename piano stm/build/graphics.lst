@@ -1,0 +1,3621 @@
+ARM GAS  /tmp/ccZhEbBz.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 2
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"graphics.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "src/ssd1306/graphics.c"
+  20              		.section	.text.graphics_init,"ax",%progbits
+  21              		.align	1
+  22              		.p2align 2,,3
+  23              		.global	graphics_init
+  24              		.syntax unified
+  25              		.thumb
+  26              		.thumb_func
+  28              	graphics_init:
+  29              	.LFB147:
+   1:src/ssd1306/graphics.c **** #include "stm32f4xx_hal.h"
+   2:src/ssd1306/graphics.c **** #include <graphics.h>
+   3:src/ssd1306/graphics.c **** #include <ssd1306.h>
+   4:src/ssd1306/graphics.c **** #include <ran.h>
+   5:src/ssd1306/graphics.c **** #include <audio.h>
+   6:src/ssd1306/graphics.c **** #include <SWO_debug.h>
+   7:src/ssd1306/graphics.c **** 
+   8:src/ssd1306/graphics.c **** #define NEAR_CLIPPING 3
+   9:src/ssd1306/graphics.c **** #define CUBE_COUNT 50
+  10:src/ssd1306/graphics.c **** #define ROOM_SIDES 8
+  11:src/ssd1306/graphics.c **** #define ROOM_SIZE  10
+  12:src/ssd1306/graphics.c **** 
+  13:src/ssd1306/graphics.c **** typedef struct {
+  14:src/ssd1306/graphics.c ****     uint8_t alive;
+  15:src/ssd1306/graphics.c ****     float scale;
+  16:src/ssd1306/graphics.c ****     RanVec3 pos, rot, ang_vel;
+  17:src/ssd1306/graphics.c **** }AnimCube;
+  18:src/ssd1306/graphics.c **** 
+  19:src/ssd1306/graphics.c **** static AnimCube cube_list[CUBE_COUNT];
+  20:src/ssd1306/graphics.c **** static float camera_fov = 1.6f;
+  21:src/ssd1306/graphics.c **** static uint32_t cube_idx = 0;
+  22:src/ssd1306/graphics.c **** static uint8_t avg_audio_cursor = 0;
+  23:src/ssd1306/graphics.c **** static float avg_audio[16];
+  24:src/ssd1306/graphics.c **** static float cube_speed = 0.1;
+  25:src/ssd1306/graphics.c **** 
+  26:src/ssd1306/graphics.c **** static const RanVec3 cube_verts[] = {
+  27:src/ssd1306/graphics.c ****     {1, 1, -1},
+  28:src/ssd1306/graphics.c ****     {-1, 1, -1},
+  29:src/ssd1306/graphics.c ****     {-1, -1, -1},
+ARM GAS  /tmp/ccZhEbBz.s 			page 2
+
+
+  30:src/ssd1306/graphics.c ****     {1, -1, -1},
+  31:src/ssd1306/graphics.c **** 
+  32:src/ssd1306/graphics.c ****     {1, 1, 1},
+  33:src/ssd1306/graphics.c ****     {-1, 1, 1},
+  34:src/ssd1306/graphics.c ****     {-1, -1, 1},
+  35:src/ssd1306/graphics.c ****     {1, -1, 1},
+  36:src/ssd1306/graphics.c **** };
+  37:src/ssd1306/graphics.c **** 
+  38:src/ssd1306/graphics.c **** static RanVec3 room_verts[ROOM_SIDES * 2];
+  39:src/ssd1306/graphics.c **** 
+  40:src/ssd1306/graphics.c **** void graphics_init(){
+  30              		.loc 1 40 21 view -0
+  31              		.cfi_startproc
+  32              		@ args = 0, pretend = 0, frame = 0
+  33              		@ frame_needed = 0, uses_anonymous_args = 0
+  41:src/ssd1306/graphics.c ****     oled_init();
+  34              		.loc 1 41 5 view .LVU1
+  40:src/ssd1306/graphics.c ****     oled_init();
+  35              		.loc 1 40 21 is_stmt 0 view .LVU2
+  36 0000 10B5     		push	{r4, lr}
+  37              	.LCFI0:
+  38              		.cfi_def_cfa_offset 8
+  39              		.cfi_offset 4, -8
+  40              		.cfi_offset 14, -4
+  41              		.loc 1 41 5 view .LVU3
+  42 0002 FFF7FEFF 		bl	oled_init
+  43              	.LVL0:
+  42:src/ssd1306/graphics.c ****     avg_audio_cursor = 0;
+  44              		.loc 1 42 5 is_stmt 1 view .LVU4
+  45              		.loc 1 42 22 is_stmt 0 view .LVU5
+  46 0006 524A     		ldr	r2, .L6
+  47 0008 524B     		ldr	r3, .L6+4
+  48              	.LBB60:
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  44:src/ssd1306/graphics.c ****         cube_list[i].scale = 0.1;
+  49              		.loc 1 44 28 view .LVU6
+  50 000a 5349     		ldr	r1, .L6+8
+  51              	.LBE60:
+  42:src/ssd1306/graphics.c ****     avg_audio_cursor = 0;
+  52              		.loc 1 42 22 view .LVU7
+  53 000c 0020     		movs	r0, #0
+  54 000e 1070     		strb	r0, [r2]
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  55              		.loc 1 43 5 is_stmt 1 view .LVU8
+  56              	.LBB61:
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  57              		.loc 1 43 9 view .LVU9
+  58              	.LVL1:
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  59              		.loc 1 43 26 discriminator 1 view .LVU10
+  60 0010 03F69802 		addw	r2, r3, #2200
+  61              	.LVL2:
+  62              	.L2:
+  63              		.loc 1 44 9 view .LVU11
+  64              		.loc 1 44 28 is_stmt 0 view .LVU12
+  65 0014 5960     		str	r1, [r3, #4]	@ float
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+ARM GAS  /tmp/ccZhEbBz.s 			page 3
+
+
+  66              		.loc 1 43 42 is_stmt 1 discriminator 3 view .LVU13
+  67              	.LVL3:
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  68              		.loc 1 43 26 discriminator 1 view .LVU14
+  69 0016 2C33     		adds	r3, r3, #44
+  70              	.LVL4:
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  71              		.loc 1 43 26 is_stmt 0 discriminator 1 view .LVU15
+  72 0018 9A42     		cmp	r2, r3
+  73 001a FBD1     		bne	.L2
+  74              	.LVL5:
+  43:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+  75              		.loc 1 43 26 discriminator 1 view .LVU16
+  76              	.LBE61:
+  77              	.LBB62:
+  78              	.LBB63:
+  45:src/ssd1306/graphics.c ****     }
+  46:src/ssd1306/graphics.c **** 
+  47:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != ROOM_SIDES; i++){
+  48:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+  79              		.loc 1 48 9 is_stmt 1 view .LVU17
+  80              	.LBB64:
+  81              	.LBI64:
+  82              		.file 2 "src/ssd1306/ran.h"
+   1:src/ssd1306/ran.h **** //TOUHOU MENTIONED????!!??!!?
+   2:src/ssd1306/ran.h **** #ifndef RAN_H
+   3:src/ssd1306/ran.h **** #define RAN_H
+   4:src/ssd1306/ran.h **** 
+   5:src/ssd1306/ran.h **** #include <math.h>
+   6:src/ssd1306/ran.h **** #include <stdlib.h>
+   7:src/ssd1306/ran.h **** extern const float sine_table[4096];
+   8:src/ssd1306/ran.h **** 
+   9:src/ssd1306/ran.h **** #define RAN_PI ((float)M_PI)
+  10:src/ssd1306/ran.h **** 
+  11:src/ssd1306/ran.h **** typedef struct {
+  12:src/ssd1306/ran.h ****     float x, y;
+  13:src/ssd1306/ran.h **** }RanVec2;
+  14:src/ssd1306/ran.h **** 
+  15:src/ssd1306/ran.h **** typedef struct {
+  16:src/ssd1306/ran.h ****     float x, y, z;
+  17:src/ssd1306/ran.h **** }RanVec3;
+  18:src/ssd1306/ran.h **** 
+  19:src/ssd1306/ran.h **** static inline RanVec2 ran_v2_scale(RanVec2 v, float scalar){
+  20:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+  21:src/ssd1306/ran.h **** }
+  22:src/ssd1306/ran.h **** 
+  23:src/ssd1306/ran.h **** static inline float ran_v2_dot(RanVec2 v1, RanVec2 v2){
+  24:src/ssd1306/ran.h ****     return v1.x * v2.x + v1.y * v2.y;
+  25:src/ssd1306/ran.h **** }
+  26:src/ssd1306/ran.h **** 
+  27:src/ssd1306/ran.h **** static inline RanVec3 ran_v3_add(RanVec3 v1, RanVec3 v2){
+  28:src/ssd1306/ran.h ****     return (RanVec3){v1.x + v2.x, v1.y + v2.y, v1.z + v2.z};
+  29:src/ssd1306/ran.h **** }
+  30:src/ssd1306/ran.h **** 
+  31:src/ssd1306/ran.h **** static inline RanVec3 ran_v3_sub(RanVec3 v1, RanVec3 v2){
+  32:src/ssd1306/ran.h ****     return (RanVec3){v1.x - v2.x, v1.y - v2.y, v1.z - v2.z};
+  33:src/ssd1306/ran.h **** }
+ARM GAS  /tmp/ccZhEbBz.s 			page 4
+
+
+  34:src/ssd1306/ran.h **** 
+  35:src/ssd1306/ran.h **** static inline RanVec3 ran_v3_mul(RanVec3 v1, RanVec3 v2){
+  36:src/ssd1306/ran.h ****     return (RanVec3){v1.x * v2.x, v1.y * v2.y, v1.z * v2.z};
+  37:src/ssd1306/ran.h **** }
+  38:src/ssd1306/ran.h **** 
+  39:src/ssd1306/ran.h **** static inline RanVec3 ran_v3_scale(RanVec3 v, float scalar){
+  40:src/ssd1306/ran.h ****     return (RanVec3){v.x * scalar, v.y * scalar, v.z * scalar};
+  41:src/ssd1306/ran.h **** }
+  42:src/ssd1306/ran.h **** 
+  43:src/ssd1306/ran.h **** static inline RanVec3 ran_v3_div(RanVec3 v1, RanVec3 v2){
+  44:src/ssd1306/ran.h ****     return (RanVec3){v1.x / v2.x, v1.y / v2.y, v1.z / v2.z};
+  45:src/ssd1306/ran.h **** }
+  46:src/ssd1306/ran.h **** 
+  47:src/ssd1306/ran.h **** static inline float ran_fast_sin(float x){
+  48:src/ssd1306/ran.h ****     return sine_table[(int)(x * (4095 / 2.0f / RAN_PI)) & 0xfff];
+  49:src/ssd1306/ran.h **** }
+  50:src/ssd1306/ran.h **** static inline float ran_fast_cos(float x){
+  51:src/ssd1306/ran.h ****     return sine_table[((int)(x * (4095 / 2.0f / RAN_PI)) + 1024) & 0xfff];
+  52:src/ssd1306/ran.h **** }
+  53:src/ssd1306/ran.h **** 
+  54:src/ssd1306/ran.h **** //Lets try to do this without matrices (aka not much of a difference)
+  55:src/ssd1306/ran.h **** static inline RanVec3 ran_v3_rot(RanVec3 v, RanVec3 euler){
+  56:src/ssd1306/ran.h ****     float s_x = ran_fast_sin(euler.x);
+  57:src/ssd1306/ran.h ****     float s_y = ran_fast_sin(euler.y);
+  58:src/ssd1306/ran.h ****     float s_z = ran_fast_sin(euler.z);
+  59:src/ssd1306/ran.h ****     float c_x = ran_fast_cos(euler.x);
+  60:src/ssd1306/ran.h ****     float c_y = ran_fast_cos(euler.y);
+  61:src/ssd1306/ran.h ****     float c_z = ran_fast_cos(euler.z);
+  62:src/ssd1306/ran.h **** 
+  63:src/ssd1306/ran.h ****     return (RanVec3){
+  64:src/ssd1306/ran.h ****         .x = (v.x * c_z + v.y * s_z) * c_y + v.z * s_y,
+  65:src/ssd1306/ran.h ****         .y = (v.x * -s_z + v.y * c_z) * c_x +
+  66:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * s_x,
+  67:src/ssd1306/ran.h ****         .z = (v.x * -s_z + v.y * c_z) * -s_x +
+  68:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * c_x,
+  69:src/ssd1306/ran.h ****     };
+  70:src/ssd1306/ran.h **** }
+  71:src/ssd1306/ran.h **** 
+  72:src/ssd1306/ran.h **** static inline RanVec2 ran_proj(float fov, RanVec3 p){
+  73:src/ssd1306/ran.h ****     float depth = fov / p.y;
+  74:src/ssd1306/ran.h ****     return (RanVec2){p.x * depth, p.z * depth};
+  75:src/ssd1306/ran.h **** }
+  76:src/ssd1306/ran.h **** 
+  77:src/ssd1306/ran.h **** static inline float ran_randf(){ return rand() / (float)RAND_MAX; }
+  78:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+  83              		.loc 2 78 23 view .LVU18
+  84              	.LBB65:
+  79:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+  85              		.loc 2 79 5 view .LVU19
+  80:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+  86              		.loc 2 80 5 view .LVU20
+  81:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+  87              		.loc 2 81 5 view .LVU21
+  82:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+  88              		.loc 2 82 5 view .LVU22
+  89              	.LBB66:
+  90              	.LBI66:
+ARM GAS  /tmp/ccZhEbBz.s 			page 5
+
+
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+  91              		.loc 2 19 23 view .LVU23
+  92              	.LBB67:
+  20:src/ssd1306/ran.h **** }
+  93              		.loc 2 20 5 view .LVU24
+  94              	.LBE67:
+  95              	.LBE66:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+  96              		.loc 2 81 11 is_stmt 0 view .LVU25
+  97 001c 4F4A     		ldr	r2, .L6+12
+  98              	.LVL6:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+  99              		.loc 2 81 11 view .LVU26
+ 100              	.LBE65:
+ 101              	.LBE64:
+  49:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 102              		.loc 1 49 23 view .LVU27
+ 103 001e 504B     		ldr	r3, .L6+16
+ 104              	.LVL7:
+ 105              	.LBB129:
+ 106              	.LBB108:
+ 107              	.LBB88:
+ 108              	.LBB68:
+  20:src/ssd1306/ran.h **** }
+ 109              		.loc 2 20 40 view .LVU28
+ 110 0020 92ED007A 		vldr.32	s14, [r2]
+ 111              	.LBE68:
+ 112              	.LBE88:
+ 113              	.LBE108:
+ 114              	.LBE129:
+ 115              		.loc 1 49 23 view .LVU29
+ 116 0024 4F48     		ldr	r0, .L6+20
+  50:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 117              		.loc 1 50 36 view .LVU30
+ 118 0026 5049     		ldr	r1, .L6+24
+  49:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 119              		.loc 1 49 23 view .LVU31
+ 120 0028 5860     		str	r0, [r3, #4]	@ float
+ 121              	.LBB130:
+ 122              	.LBB109:
+ 123              	.LBB89:
+ 124              	.LBB69:
+  20:src/ssd1306/ran.h **** }
+ 125              		.loc 2 20 26 view .LVU32
+ 126 002a F2EE047A 		vmov.f32	s15, #1.0e+1
+  20:src/ssd1306/ran.h **** }
+ 127              		.loc 2 20 40 view .LVU33
+ 128 002e 27EE277A 		vmul.f32	s14, s14, s15
+ 129              	.LVL8:
+  20:src/ssd1306/ran.h **** }
+ 130              		.loc 2 20 40 view .LVU34
+ 131              	.LBE69:
+ 132              	.LBE89:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 133              		.loc 2 81 11 view .LVU35
+ 134 0032 02F5805C 		add	ip, r2, #4096
+ 135              	.LBB90:
+ARM GAS  /tmp/ccZhEbBz.s 			page 6
+
+
+ 136              	.LBB70:
+  20:src/ssd1306/ran.h **** }
+ 137              		.loc 2 20 26 view .LVU36
+ 138 0036 DCED006A 		vldr.32	s13, [ip]
+ 139              	.LBE70:
+ 140              	.LBE90:
+ 141              	.LBE109:
+ 142              	.LBE130:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 143              		.loc 1 49 23 view .LVU37
+ 144 003a 83ED027A 		vstr.32	s14, [r3, #8]
+ 145              	.LBB131:
+ 146              	.LBB110:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 147              		.loc 2 81 11 view .LVU38
+ 148 003e 0CF2FC74 		addw	r4, ip, #2044
+ 149              	.LBE110:
+ 150              	.LBE131:
+ 151              		.loc 1 50 36 view .LVU39
+ 152 0042 83ED1A7A 		vstr.32	s14, [r3, #104]
+ 153              	.LBB132:
+ 154              	.LBB111:
+ 155              	.LBB91:
+ 156              	.LBB71:
+  20:src/ssd1306/ran.h **** }
+ 157              		.loc 2 20 26 view .LVU40
+ 158 0046 94ED007A 		vldr.32	s14, [r4]
+ 159              	.LBE71:
+ 160              	.LBE91:
+ 161              	.LBE111:
+ 162              	.LBE132:
+ 163              		.loc 1 50 36 view .LVU41
+ 164 004a 5966     		str	r1, [r3, #100]	@ float
+ 165              	.LBB133:
+ 166              	.LBB112:
+ 167              	.LBB92:
+ 168              	.LBB72:
+  20:src/ssd1306/ran.h **** }
+ 169              		.loc 2 20 26 view .LVU42
+ 170 004c 66EEA76A 		vmul.f32	s13, s13, s15
+ 171              	.LVL9:
+  20:src/ssd1306/ran.h **** }
+ 172              		.loc 2 20 26 view .LVU43
+ 173              	.LBE72:
+ 174              	.LBE92:
+ 175              	.LBE112:
+ 176              	.LBE133:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 177              		.loc 1 49 9 is_stmt 1 view .LVU44
+ 178              		.loc 1 50 9 view .LVU45
+ 179              		.loc 1 50 9 is_stmt 0 view .LVU46
+ 180              	.LBE63:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 181              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU47
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 182              		.loc 1 47 26 discriminator 1 view .LVU48
+ 183              	.LBB150:
+ARM GAS  /tmp/ccZhEbBz.s 			page 7
+
+
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 184              		.loc 1 48 9 view .LVU49
+ 185              	.LBB134:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 186              		.loc 2 78 23 view .LVU50
+ 187              	.LBB113:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 188              		.loc 2 79 5 view .LVU51
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 189              		.loc 2 80 5 view .LVU52
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 190              		.loc 2 81 5 view .LVU53
+ 191              		.loc 2 82 5 view .LVU54
+ 192              	.LBB93:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 193              		.loc 2 19 23 view .LVU55
+ 194              	.LBB73:
+  20:src/ssd1306/ran.h **** }
+ 195              		.loc 2 20 5 view .LVU56
+ 196              	.LBE73:
+ 197              	.LBE93:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 198              		.loc 2 81 11 is_stmt 0 view .LVU57
+ 199 0050 0CF6FC7C 		addw	ip, ip, #4092
+ 200              	.LBB94:
+ 201              	.LBB74:
+  20:src/ssd1306/ran.h **** }
+ 202              		.loc 2 20 26 view .LVU58
+ 203 0054 27EE277A 		vmul.f32	s14, s14, s15
+ 204 0058 9CED005A 		vldr.32	s10, [ip]
+ 205              	.LBE74:
+ 206              	.LBE94:
+ 207              	.LBE113:
+ 208              	.LBE134:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 209              		.loc 1 49 23 view .LVU59
+ 210 005c C3ED006A 		vstr.32	s13, [r3]
+ 211              	.LBB135:
+ 212              	.LBB114:
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 213              		.loc 2 80 11 view .LVU60
+ 214 0060 02F2FC7C 		addw	ip, r2, #2044
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 215              		.loc 2 81 11 view .LVU61
+ 216 0064 02F5005E 		add	lr, r2, #8192
+ 217              	.LBE114:
+ 218              	.LBE135:
+ 219              		.loc 1 50 36 view .LVU62
+ 220 0068 C3ED186A 		vstr.32	s13, [r3, #96]
+ 221              	.LBB136:
+ 222              	.LBB115:
+ 223              	.LBB95:
+ 224              	.LBB75:
+  20:src/ssd1306/ran.h **** }
+ 225              		.loc 2 20 40 view .LVU63
+ 226 006c DCED006A 		vldr.32	s13, [ip]
+ 227              	.LBE75:
+ARM GAS  /tmp/ccZhEbBz.s 			page 8
+
+
+ 228              	.LBE95:
+ 229              	.LBE115:
+ 230              	.LBE136:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 231              		.loc 1 49 23 view .LVU64
+ 232 0070 83ED037A 		vstr.32	s14, [r3, #12]
+ 233              	.LBB137:
+ 234              	.LBB116:
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 235              		.loc 2 80 11 view .LVU65
+ 236 0074 02F6FC7C 		addw	ip, r2, #4092
+ 237              	.LBE116:
+ 238              	.LBE137:
+ 239              		.loc 1 50 36 view .LVU66
+ 240 0078 83ED1B7A 		vstr.32	s14, [r3, #108]
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 241              		.loc 1 49 23 view .LVU67
+ 242 007c 83ED0B7A 		vstr.32	s14, [r3, #44]
+ 243              		.loc 1 50 36 view .LVU68
+ 244 0080 83ED237A 		vstr.32	s14, [r3, #140]
+ 245              	.LBB138:
+ 246              	.LBB117:
+ 247              	.LBB96:
+ 248              	.LBB76:
+  20:src/ssd1306/ran.h **** }
+ 249              		.loc 2 20 40 view .LVU69
+ 250 0084 9CED007A 		vldr.32	s14, [ip]
+ 251              	.LBE76:
+ 252              	.LBE96:
+ 253              	.LBE117:
+ 254              	.LBE138:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 255              		.loc 1 49 23 view .LVU70
+ 256 0088 1861     		str	r0, [r3, #16]	@ float
+ 257              	.LBB139:
+ 258              	.LBB118:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 259              		.loc 2 81 11 view .LVU71
+ 260 008a 0EF2FC7C 		addw	ip, lr, #2044
+ 261 008e 0EF6FC7E 		addw	lr, lr, #4092
+ 262              	.LBB97:
+ 263              	.LBB77:
+  20:src/ssd1306/ran.h **** }
+ 264              		.loc 2 20 26 view .LVU72
+ 265 0092 DCED005A 		vldr.32	s11, [ip]
+ 266 0096 9EED006A 		vldr.32	s12, [lr]
+ 267              	.LBE77:
+ 268              	.LBE97:
+ 269              	.LBE118:
+ 270              	.LBE139:
+ 271              		.loc 1 50 36 view .LVU73
+ 272 009a 1967     		str	r1, [r3, #112]	@ float
+ 273              	.LBB140:
+ 274              	.LBB119:
+ 275              	.LBB98:
+ 276              	.LBB78:
+  20:src/ssd1306/ran.h **** }
+ARM GAS  /tmp/ccZhEbBz.s 			page 9
+
+
+ 277              		.loc 2 20 26 view .LVU74
+ 278 009c 25EE275A 		vmul.f32	s10, s10, s15
+  20:src/ssd1306/ran.h **** }
+ 279              		.loc 2 20 40 view .LVU75
+ 280 00a0 66EEA76A 		vmul.f32	s13, s13, s15
+ 281              	.LVL10:
+  20:src/ssd1306/ran.h **** }
+ 282              		.loc 2 20 40 view .LVU76
+ 283              	.LBE78:
+ 284              	.LBE98:
+ 285              	.LBE119:
+ 286              	.LBE140:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 287              		.loc 1 49 9 is_stmt 1 view .LVU77
+ 288              	.LBB141:
+ 289              	.LBB120:
+ 290              	.LBB99:
+ 291              	.LBB79:
+  20:src/ssd1306/ran.h **** }
+ 292              		.loc 2 20 26 is_stmt 0 view .LVU78
+ 293 00a4 65EEA75A 		vmul.f32	s11, s11, s15
+ 294 00a8 26EE276A 		vmul.f32	s12, s12, s15
+  20:src/ssd1306/ran.h **** }
+ 295              		.loc 2 20 40 view .LVU79
+ 296 00ac 27EE277A 		vmul.f32	s14, s14, s15
+ 297              	.LBE79:
+ 298              	.LBE99:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 299              		.loc 2 81 11 view .LVU80
+ 300 00b0 02F54052 		add	r2, r2, #12288
+ 301 00b4 02F2FC7C 		addw	ip, r2, #2044
+ 302 00b8 02F6FC72 		addw	r2, r2, #4092
+ 303              	.LBE120:
+ 304              	.LBE141:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 305              		.loc 1 49 23 view .LVU81
+ 306 00bc 83ED087A 		vstr.32	s14, [r3, #32]
+ 307              		.loc 1 50 36 view .LVU82
+ 308 00c0 83ED207A 		vstr.32	s14, [r3, #128]
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 309              		.loc 1 49 23 view .LVU83
+ 310 00c4 D861     		str	r0, [r3, #28]	@ float
+ 311              		.loc 1 50 36 view .LVU84
+ 312 00c6 D967     		str	r1, [r3, #124]	@ float
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 313              		.loc 1 49 23 view .LVU85
+ 314 00c8 9862     		str	r0, [r3, #40]	@ float
+ 315              		.loc 1 50 36 view .LVU86
+ 316 00ca C3F88810 		str	r1, [r3, #136]	@ float
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 317              		.loc 1 49 23 view .LVU87
+ 318 00ce 83ED065A 		vstr.32	s10, [r3, #24]
+ 319              		.loc 1 50 36 view .LVU88
+ 320 00d2 83ED1E5A 		vstr.32	s10, [r3, #120]
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 321              		.loc 1 49 23 view .LVU89
+ 322 00d6 C3ED056A 		vstr.32	s13, [r3, #20]
+ARM GAS  /tmp/ccZhEbBz.s 			page 10
+
+
+ 323              		.loc 1 50 9 is_stmt 1 view .LVU90
+ 324              		.loc 1 50 36 is_stmt 0 view .LVU91
+ 325 00da C3ED1D6A 		vstr.32	s13, [r3, #116]
+ 326              	.LVL11:
+ 327              		.loc 1 50 36 view .LVU92
+ 328              	.LBE150:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 329              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU93
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 330              		.loc 1 47 26 discriminator 1 view .LVU94
+ 331              	.LBB151:
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 332              		.loc 1 48 9 view .LVU95
+ 333              	.LBB142:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 334              		.loc 2 78 23 view .LVU96
+ 335              	.LBB121:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 336              		.loc 2 79 5 view .LVU97
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 337              		.loc 2 80 5 view .LVU98
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 338              		.loc 2 81 5 view .LVU99
+ 339              		.loc 2 82 5 view .LVU100
+ 340              	.LBB100:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 341              		.loc 2 19 23 view .LVU101
+ 342              	.LBB80:
+  20:src/ssd1306/ran.h **** }
+ 343              		.loc 2 20 5 view .LVU102
+  20:src/ssd1306/ran.h **** }
+ 344              		.loc 2 20 5 is_stmt 0 view .LVU103
+ 345              	.LBE80:
+ 346              	.LBE100:
+ 347              	.LBE121:
+ 348              	.LBE142:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 349              		.loc 1 49 9 is_stmt 1 view .LVU104
+ 350              		.loc 1 50 9 view .LVU105
+ 351              		.loc 1 50 9 is_stmt 0 view .LVU106
+ 352              	.LBE151:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 353              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU107
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 354              		.loc 1 47 26 discriminator 1 view .LVU108
+ 355              	.LBB152:
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 356              		.loc 1 48 9 view .LVU109
+ 357              	.LBB143:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 358              		.loc 2 78 23 view .LVU110
+ 359              	.LBB122:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 360              		.loc 2 79 5 view .LVU111
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 361              		.loc 2 80 5 view .LVU112
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ARM GAS  /tmp/ccZhEbBz.s 			page 11
+
+
+ 362              		.loc 2 81 5 view .LVU113
+ 363              		.loc 2 82 5 view .LVU114
+ 364              	.LBB101:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 365              		.loc 2 19 23 view .LVU115
+ 366              	.LBB81:
+  20:src/ssd1306/ran.h **** }
+ 367              		.loc 2 20 5 view .LVU116
+  20:src/ssd1306/ran.h **** }
+ 368              		.loc 2 20 5 is_stmt 0 view .LVU117
+ 369              	.LBE81:
+ 370              	.LBE101:
+ 371              	.LBE122:
+ 372              	.LBE143:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 373              		.loc 1 49 9 is_stmt 1 view .LVU118
+ 374              		.loc 1 50 9 view .LVU119
+ 375              		.loc 1 50 9 is_stmt 0 view .LVU120
+ 376              	.LBE152:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 377              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU121
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 378              		.loc 1 47 26 discriminator 1 view .LVU122
+ 379              	.LBB153:
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 380              		.loc 1 48 9 view .LVU123
+ 381              	.LBB144:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 382              		.loc 2 78 23 view .LVU124
+ 383              	.LBB123:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 384              		.loc 2 79 5 view .LVU125
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 385              		.loc 2 80 5 view .LVU126
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 386              		.loc 2 81 5 view .LVU127
+ 387              		.loc 2 82 5 view .LVU128
+ 388              	.LBB102:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 389              		.loc 2 19 23 view .LVU129
+ 390              	.LBB82:
+  20:src/ssd1306/ran.h **** }
+ 391              		.loc 2 20 5 view .LVU130
+  20:src/ssd1306/ran.h **** }
+ 392              		.loc 2 20 5 is_stmt 0 view .LVU131
+ 393              	.LBE82:
+ 394              	.LBE102:
+ 395              	.LBE123:
+ 396              	.LBE144:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 397              		.loc 1 49 9 is_stmt 1 view .LVU132
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 398              		.loc 1 49 23 is_stmt 0 view .LVU133
+ 399 00de C3ED095A 		vstr.32	s11, [r3, #36]
+ 400              		.loc 1 50 36 view .LVU134
+ 401 00e2 C3ED215A 		vstr.32	s11, [r3, #132]
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ARM GAS  /tmp/ccZhEbBz.s 			page 12
+
+
+ 402              		.loc 1 49 23 view .LVU135
+ 403 00e6 83ED0C6A 		vstr.32	s12, [r3, #48]
+ 404              	.LBB145:
+ 405              	.LBB124:
+ 406              	.LBB103:
+ 407              	.LBB83:
+  20:src/ssd1306/ran.h **** }
+ 408              		.loc 2 20 26 view .LVU136
+ 409 00ea 9CED007A 		vldr.32	s14, [ip]
+ 410 00ee D2ED004A 		vldr.32	s9, [r2]
+ 411              	.LBE83:
+ 412              	.LBE103:
+ 413              	.LBE124:
+ 414              	.LBE145:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 415              		.loc 1 49 23 view .LVU137
+ 416 00f2 5863     		str	r0, [r3, #52]	@ float
+ 417              	.LBB146:
+ 418              	.LBB125:
+ 419              	.LBB104:
+ 420              	.LBB84:
+  20:src/ssd1306/ran.h **** }
+ 421              		.loc 2 20 26 view .LVU138
+ 422 00f4 27EE277A 		vmul.f32	s14, s14, s15
+ 423 00f8 64EEA77A 		vmul.f32	s15, s9, s15
+ 424              	.LBE84:
+ 425              	.LBE104:
+ 426              	.LBE125:
+ 427              	.LBE146:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 428              		.loc 1 49 23 view .LVU139
+ 429 00fc 83ED0E5A 		vstr.32	s10, [r3, #56]
+ 430              		.loc 1 50 9 is_stmt 1 view .LVU140
+ 431              		.loc 1 50 36 is_stmt 0 view .LVU141
+ 432 0100 83ED246A 		vstr.32	s12, [r3, #144]
+ 433 0104 C3F89410 		str	r1, [r3, #148]	@ float
+ 434 0108 83ED265A 		vstr.32	s10, [r3, #152]
+ 435              	.LVL12:
+ 436              		.loc 1 50 36 view .LVU142
+ 437              	.LBE153:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 438              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU143
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 439              		.loc 1 47 26 discriminator 1 view .LVU144
+ 440              	.LBB154:
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 441              		.loc 1 48 9 view .LVU145
+ 442              	.LBB147:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 443              		.loc 2 78 23 view .LVU146
+ 444              	.LBB126:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 445              		.loc 2 79 5 view .LVU147
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 446              		.loc 2 80 5 view .LVU148
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 447              		.loc 2 81 5 view .LVU149
+ARM GAS  /tmp/ccZhEbBz.s 			page 13
+
+
+ 448              		.loc 2 82 5 view .LVU150
+ 449              	.LBB105:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 450              		.loc 2 19 23 view .LVU151
+ 451              	.LBB85:
+  20:src/ssd1306/ran.h **** }
+ 452              		.loc 2 20 5 view .LVU152
+  20:src/ssd1306/ran.h **** }
+ 453              		.loc 2 20 5 is_stmt 0 view .LVU153
+ 454              	.LBE85:
+ 455              	.LBE105:
+ 456              	.LBE126:
+ 457              	.LBE147:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 458              		.loc 1 49 9 is_stmt 1 view .LVU154
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 459              		.loc 1 49 23 is_stmt 0 view .LVU155
+ 460 010c 83ED0F7A 		vstr.32	s14, [r3, #60]
+ 461 0110 1864     		str	r0, [r3, #64]	@ float
+ 462 0112 C3ED115A 		vstr.32	s11, [r3, #68]
+ 463              		.loc 1 50 9 is_stmt 1 view .LVU156
+ 464              		.loc 1 50 36 is_stmt 0 view .LVU157
+ 465 0116 83ED277A 		vstr.32	s14, [r3, #156]
+ 466 011a C3F8A010 		str	r1, [r3, #160]	@ float
+ 467 011e C3ED295A 		vstr.32	s11, [r3, #164]
+ 468              	.LVL13:
+ 469              		.loc 1 50 36 view .LVU158
+ 470              	.LBE154:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 471              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU159
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 472              		.loc 1 47 26 discriminator 1 view .LVU160
+ 473              	.LBB155:
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 474              		.loc 1 48 9 view .LVU161
+ 475              	.LBB148:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 476              		.loc 2 78 23 view .LVU162
+ 477              	.LBB127:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 478              		.loc 2 79 5 view .LVU163
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 479              		.loc 2 80 5 view .LVU164
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 480              		.loc 2 81 5 view .LVU165
+ 481              		.loc 2 82 5 view .LVU166
+ 482              	.LBB106:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 483              		.loc 2 19 23 view .LVU167
+ 484              	.LBB86:
+  20:src/ssd1306/ran.h **** }
+ 485              		.loc 2 20 5 view .LVU168
+  20:src/ssd1306/ran.h **** }
+ 486              		.loc 2 20 5 is_stmt 0 view .LVU169
+ 487              	.LBE86:
+ 488              	.LBE106:
+ 489              	.LBE127:
+ARM GAS  /tmp/ccZhEbBz.s 			page 14
+
+
+ 490              	.LBE148:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 491              		.loc 1 49 9 is_stmt 1 view .LVU170
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 492              		.loc 1 49 23 is_stmt 0 view .LVU171
+ 493 0122 C3ED127A 		vstr.32	s15, [r3, #72]
+ 494 0126 D864     		str	r0, [r3, #76]	@ float
+ 495 0128 83ED146A 		vstr.32	s12, [r3, #80]
+ 496              		.loc 1 50 9 is_stmt 1 view .LVU172
+ 497              		.loc 1 50 36 is_stmt 0 view .LVU173
+ 498 012c C3ED2A7A 		vstr.32	s15, [r3, #168]
+ 499 0130 C3F8AC10 		str	r1, [r3, #172]	@ float
+ 500 0134 83ED2C6A 		vstr.32	s12, [r3, #176]
+ 501              	.LVL14:
+ 502              		.loc 1 50 36 view .LVU174
+ 503              	.LBE155:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 504              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU175
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 505              		.loc 1 47 26 discriminator 1 view .LVU176
+ 506              	.LBB156:
+  48:src/ssd1306/graphics.c ****         room_verts[i] = (RanVec3){p.x, 50, p.y};
+ 507              		.loc 1 48 9 view .LVU177
+ 508              	.LBB149:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 509              		.loc 2 78 23 view .LVU178
+ 510              	.LBB128:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 511              		.loc 2 79 5 view .LVU179
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 512              		.loc 2 80 5 view .LVU180
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 513              		.loc 2 81 5 view .LVU181
+ 514              		.loc 2 82 5 view .LVU182
+ 515              	.LBB107:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 516              		.loc 2 19 23 view .LVU183
+ 517              	.LBB87:
+  20:src/ssd1306/ran.h **** }
+ 518              		.loc 2 20 5 view .LVU184
+  20:src/ssd1306/ran.h **** }
+ 519              		.loc 2 20 5 is_stmt 0 view .LVU185
+ 520              	.LBE87:
+ 521              	.LBE107:
+ 522              	.LBE128:
+ 523              	.LBE149:
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 524              		.loc 1 49 9 is_stmt 1 view .LVU186
+  49:src/ssd1306/graphics.c ****         room_verts[i + ROOM_SIDES] = (RanVec3){p.x, 17, p.y};
+ 525              		.loc 1 49 23 is_stmt 0 view .LVU187
+ 526 0138 C3ED156A 		vstr.32	s13, [r3, #84]
+ 527 013c 9865     		str	r0, [r3, #88]	@ float
+ 528 013e 83ED177A 		vstr.32	s14, [r3, #92]
+ 529              		.loc 1 50 9 is_stmt 1 view .LVU188
+ 530              		.loc 1 50 36 is_stmt 0 view .LVU189
+ 531 0142 C3ED2D6A 		vstr.32	s13, [r3, #180]
+ 532 0146 C3F8B810 		str	r1, [r3, #184]	@ float
+ARM GAS  /tmp/ccZhEbBz.s 			page 15
+
+
+ 533 014a 83ED2F7A 		vstr.32	s14, [r3, #188]
+ 534              	.LVL15:
+ 535              		.loc 1 50 36 view .LVU190
+ 536              	.LBE156:
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 537              		.loc 1 47 42 is_stmt 1 discriminator 3 view .LVU191
+  47:src/ssd1306/graphics.c ****         RanVec2 p = ran_fast_polar((i / (float)ROOM_SIDES) * 2 * RAN_PI, ROOM_SIZE);
+ 538              		.loc 1 47 26 discriminator 1 view .LVU192
+ 539              	.LBE62:
+  51:src/ssd1306/graphics.c ****     }
+  52:src/ssd1306/graphics.c **** }
+ 540              		.loc 1 52 1 is_stmt 0 view .LVU193
+ 541 014e 10BD     		pop	{r4, pc}
+ 542              	.L7:
+ 543              		.align	2
+ 544              	.L6:
+ 545 0150 00000000 		.word	avg_audio_cursor
+ 546 0154 00000000 		.word	cube_list
+ 547 0158 CDCCCC3D 		.word	1036831949
+ 548 015c 00000000 		.word	sine_table
+ 549 0160 00000000 		.word	room_verts
+ 550 0164 00004842 		.word	1112014848
+ 551 0168 00008841 		.word	1099431936
+ 552              		.cfi_endproc
+ 553              	.LFE147:
+ 555              		.global	__aeabi_i2d
+ 556              		.global	__aeabi_dmul
+ 557              		.global	__aeabi_f2d
+ 558              		.global	__aeabi_dadd
+ 559              		.global	__aeabi_d2f
+ 560              		.section	.text.graphics_update,"ax",%progbits
+ 561              		.align	1
+ 562              		.p2align 2,,3
+ 563              		.global	graphics_update
+ 564              		.syntax unified
+ 565              		.thumb
+ 566              		.thumb_func
+ 568              	graphics_update:
+ 569              	.LFB151:
+  53:src/ssd1306/graphics.c **** 
+  54:src/ssd1306/graphics.c **** static void graphics_process_cube(AnimCube *cube){
+  55:src/ssd1306/graphics.c ****     if(!cube->alive)return;
+  56:src/ssd1306/graphics.c ****     
+  57:src/ssd1306/graphics.c ****     //projected vertices
+  58:src/ssd1306/graphics.c ****     int p_verts[8][2];
+  59:src/ssd1306/graphics.c ****     uint8_t culled_verts = 0;
+  60:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != sizeof(cube_verts) / sizeof(RanVec3); i++){
+  61:src/ssd1306/graphics.c ****         RanVec3 t_vert = ran_v3_scale(cube_verts[i], cube->scale);
+  62:src/ssd1306/graphics.c ****         t_vert = ran_v3_rot(t_vert, cube->rot);
+  63:src/ssd1306/graphics.c ****         t_vert = ran_v3_add(t_vert, cube->pos);
+  64:src/ssd1306/graphics.c **** 
+  65:src/ssd1306/graphics.c ****         if(t_vert.y < NEAR_CLIPPING){
+  66:src/ssd1306/graphics.c ****             t_vert.y = NEAR_CLIPPING;
+  67:src/ssd1306/graphics.c ****             culled_verts++;
+  68:src/ssd1306/graphics.c ****         }
+  69:src/ssd1306/graphics.c **** 
+  70:src/ssd1306/graphics.c ****         RanVec2 projected_p = ran_proj(camera_fov, t_vert);
+ARM GAS  /tmp/ccZhEbBz.s 			page 16
+
+
+  71:src/ssd1306/graphics.c ****         p_verts[i][0] = projected_p.x * 32 + 64;
+  72:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+  73:src/ssd1306/graphics.c ****     }
+  74:src/ssd1306/graphics.c ****     if(culled_verts == 8)cube->alive = 0;
+  75:src/ssd1306/graphics.c **** 
+  76:src/ssd1306/graphics.c ****     cube->pos.y -= cube_speed;
+  77:src/ssd1306/graphics.c ****     cube->rot = ran_v3_add(cube->rot, cube->ang_vel);
+  78:src/ssd1306/graphics.c **** 
+  79:src/ssd1306/graphics.c **** #define LINE(p1, p2) \
+  80:src/ssd1306/graphics.c ****     oled_draw_line(p_verts[p1][0], p_verts[p1][1], p_verts[p2][0], p_verts[p2][1])
+  81:src/ssd1306/graphics.c **** 
+  82:src/ssd1306/graphics.c ****     LINE(0, 1);
+  83:src/ssd1306/graphics.c ****     LINE(1, 2);
+  84:src/ssd1306/graphics.c ****     LINE(2, 3);
+  85:src/ssd1306/graphics.c ****     LINE(3, 0);
+  86:src/ssd1306/graphics.c **** 
+  87:src/ssd1306/graphics.c ****     LINE(4, 5);
+  88:src/ssd1306/graphics.c ****     LINE(5, 6);
+  89:src/ssd1306/graphics.c ****     LINE(6, 7);
+  90:src/ssd1306/graphics.c ****     LINE(7, 4);
+  91:src/ssd1306/graphics.c **** 
+  92:src/ssd1306/graphics.c ****     LINE(0, 4);
+  93:src/ssd1306/graphics.c ****     LINE(1, 5);
+  94:src/ssd1306/graphics.c ****     LINE(2, 6);
+  95:src/ssd1306/graphics.c ****     LINE(3, 7);
+  96:src/ssd1306/graphics.c **** #undef LINE
+  97:src/ssd1306/graphics.c **** }
+  98:src/ssd1306/graphics.c **** 
+  99:src/ssd1306/graphics.c **** 
+ 100:src/ssd1306/graphics.c **** static void run_spawner(){
+ 101:src/ssd1306/graphics.c ****     static uint16_t tick = 0;
+ 102:src/ssd1306/graphics.c ****     if(!(tick % 20)){
+ 103:src/ssd1306/graphics.c **** 
+ 104:src/ssd1306/graphics.c ****         for(uint8_t i = 0; i != 3; i++){
+ 105:src/ssd1306/graphics.c ****         AnimCube *cube = cube_list + cube_idx;
+ 106:src/ssd1306/graphics.c ****         //if(rand() & 1)goto end;
+ 107:src/ssd1306/graphics.c ****         if(cube->alive)goto end;
+ 108:src/ssd1306/graphics.c ****         cube_idx++;
+ 109:src/ssd1306/graphics.c ****         cube_idx %= CUBE_COUNT;
+ 110:src/ssd1306/graphics.c ****         cube->alive = 1;
+ 111:src/ssd1306/graphics.c **** 
+ 112:src/ssd1306/graphics.c ****         RanVec2 orig_pos = ran_fast_polar(tick * 0.031 + i * (2 * RAN_PI / 3.0f), 5);//ran_randf() 
+ 113:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 114:src/ssd1306/graphics.c ****         cube->pos = (RanVec3){orig_pos.x, 40, orig_pos.y};
+ 115:src/ssd1306/graphics.c ****         cube->rot = (RanVec3){0, 0, 0};
+ 116:src/ssd1306/graphics.c ****         cube->ang_vel = (RanVec3){
+ 117:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 118:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 119:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f)
+ 120:src/ssd1306/graphics.c ****         };
+ 121:src/ssd1306/graphics.c ****         }
+ 122:src/ssd1306/graphics.c ****     }
+ 123:src/ssd1306/graphics.c **** end:
+ 124:src/ssd1306/graphics.c ****     tick++;
+ 125:src/ssd1306/graphics.c **** }
+ 126:src/ssd1306/graphics.c **** 
+ 127:src/ssd1306/graphics.c **** static void graphics_draw_cubes(){
+ARM GAS  /tmp/ccZhEbBz.s 			page 17
+
+
+ 128:src/ssd1306/graphics.c ****     static uint32_t tick = 0;
+ 129:src/ssd1306/graphics.c ****     float value = audio_get_sample_vol();
+ 130:src/ssd1306/graphics.c **** 
+ 131:src/ssd1306/graphics.c ****     avg_audio[avg_audio_cursor] = value;
+ 132:src/ssd1306/graphics.c ****     avg_audio_cursor++;
+ 133:src/ssd1306/graphics.c ****     avg_audio_cursor &= (sizeof(avg_audio) / sizeof(float) - 1);
+ 134:src/ssd1306/graphics.c **** 
+ 135:src/ssd1306/graphics.c ****     float f_value = 0;
+ 136:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != sizeof(avg_audio) / sizeof(float); i++){
+ 137:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 138:src/ssd1306/graphics.c ****     }
+ 139:src/ssd1306/graphics.c **** 
+ 140:src/ssd1306/graphics.c ****     f_value *= (1 / (float)(sizeof(avg_audio) / sizeof(float)));
+ 141:src/ssd1306/graphics.c ****     cube_speed = 0.3f * f_value + 0.14f;
+ 142:src/ssd1306/graphics.c ****     camera_fov = (1 - value) * 0.8f + 2.1f;
+ 143:src/ssd1306/graphics.c **** 
+ 144:src/ssd1306/graphics.c ****     run_spawner();
+ 145:src/ssd1306/graphics.c **** 
+ 146:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != CUBE_COUNT; i++){
+ 147:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 148:src/ssd1306/graphics.c ****         graphics_process_cube(cube_list + i);
+ 149:src/ssd1306/graphics.c ****     }
+ 150:src/ssd1306/graphics.c **** 
+ 151:src/ssd1306/graphics.c ****     int8_t line_offset = 3 + 33 * value;
+ 152:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 64, 128, 64 - line_offset);
+ 153:src/ssd1306/graphics.c ****     oled_draw_line(line_offset, 64, 0, 64 - line_offset);
+ 154:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 0, 128, line_offset);
+ 155:src/ssd1306/graphics.c ****     oled_draw_line(line_offset, 0, 0, line_offset);
+ 156:src/ssd1306/graphics.c **** 
+ 157:src/ssd1306/graphics.c ****     int room_verts_ss[ROOM_SIDES * 2][2];
+ 158:src/ssd1306/graphics.c ****     float rot_ang = 0.002f*tick;
+ 159:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 160:src/ssd1306/graphics.c ****     RanVec2 S = {-R.y, R.x};
+ 161:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != ROOM_SIDES * 2; i++){
+ 162:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 163:src/ssd1306/graphics.c ****         p = (RanVec3){
+ 164:src/ssd1306/graphics.c ****             ran_v2_dot((RanVec2){p.x, p.z}, R),
+ 165:src/ssd1306/graphics.c ****             p.y,
+ 166:src/ssd1306/graphics.c ****             ran_v2_dot((RanVec2){p.x, p.z}, S)
+ 167:src/ssd1306/graphics.c ****         };
+ 168:src/ssd1306/graphics.c **** 
+ 169:src/ssd1306/graphics.c ****         RanVec2 room_vert_p = ran_proj(camera_fov, p);
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][0] = room_vert_p.x * 32 + 64;
+ 171:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 172:src/ssd1306/graphics.c ****     }
+ 173:src/ssd1306/graphics.c **** #define LINE(p1, p2) \
+ 174:src/ssd1306/graphics.c ****     oled_draw_line_dotted(room_verts_ss[p1][0], room_verts_ss[p1][1], room_verts_ss[p2][0], room_ve
+ 175:src/ssd1306/graphics.c ****     //Compile time unrolling help me
+ 176:src/ssd1306/graphics.c ****     #pragma GCC unroll 99
+ 177:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != ROOM_SIDES; i++){
+ 178:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 179:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 180:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 181:src/ssd1306/graphics.c ****     }
+ 182:src/ssd1306/graphics.c **** #undef LINE
+ 183:src/ssd1306/graphics.c **** 
+ 184:src/ssd1306/graphics.c ****     oled_show();
+ARM GAS  /tmp/ccZhEbBz.s 			page 18
+
+
+ 185:src/ssd1306/graphics.c ****     tick++;
+ 186:src/ssd1306/graphics.c **** }
+ 187:src/ssd1306/graphics.c **** 
+ 188:src/ssd1306/graphics.c **** void graphics_update(){
+ 570              		.loc 1 188 23 is_stmt 1 view -0
+ 571              		.cfi_startproc
+ 572              		@ args = 0, pretend = 0, frame = 168
+ 573              		@ frame_needed = 0, uses_anonymous_args = 0
+ 189:src/ssd1306/graphics.c ****     static uint32_t prev_tick;
+ 574              		.loc 1 189 5 view .LVU195
+ 190:src/ssd1306/graphics.c ****     if(HAL_GetTick() - prev_tick > 15){
+ 575              		.loc 1 190 5 view .LVU196
+ 188:src/ssd1306/graphics.c ****     static uint32_t prev_tick;
+ 576              		.loc 1 188 23 is_stmt 0 view .LVU197
+ 577 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 578              	.LCFI1:
+ 579              		.cfi_def_cfa_offset 36
+ 580              		.cfi_offset 4, -36
+ 581              		.cfi_offset 5, -32
+ 582              		.cfi_offset 6, -28
+ 583              		.cfi_offset 7, -24
+ 584              		.cfi_offset 8, -20
+ 585              		.cfi_offset 9, -16
+ 586              		.cfi_offset 10, -12
+ 587              		.cfi_offset 11, -8
+ 588              		.cfi_offset 14, -4
+ 589 0004 2DED0C8B 		vpush.64	{d8, d9, d10, d11, d12, d13}
+ 590              	.LCFI2:
+ 591              		.cfi_def_cfa_offset 84
+ 592              		.cfi_offset 80, -84
+ 593              		.cfi_offset 81, -80
+ 594              		.cfi_offset 82, -76
+ 595              		.cfi_offset 83, -72
+ 596              		.cfi_offset 84, -68
+ 597              		.cfi_offset 85, -64
+ 598              		.cfi_offset 86, -60
+ 599              		.cfi_offset 87, -56
+ 600              		.cfi_offset 88, -52
+ 601              		.cfi_offset 89, -48
+ 602              		.cfi_offset 90, -44
+ 603              		.cfi_offset 91, -40
+ 604 0008 ABB0     		sub	sp, sp, #172
+ 605              	.LCFI3:
+ 606              		.cfi_def_cfa_offset 256
+ 607              		.loc 1 190 8 view .LVU198
+ 608 000a FFF7FEFF 		bl	HAL_GetTick
+ 609              	.LVL16:
+ 610              		.loc 1 190 22 discriminator 1 view .LVU199
+ 611 000e 054B     		ldr	r3, .L32
+ 612 0010 1B68     		ldr	r3, [r3]
+ 613 0012 C31A     		subs	r3, r0, r3
+ 614              		.loc 1 190 7 discriminator 1 view .LVU200
+ 615 0014 0F2B     		cmp	r3, #15
+ 616 0016 07D8     		bhi	.L31
+ 191:src/ssd1306/graphics.c ****         graphics_draw_cubes();
+ 192:src/ssd1306/graphics.c ****         prev_tick = HAL_GetTick();
+ 193:src/ssd1306/graphics.c ****     }
+ARM GAS  /tmp/ccZhEbBz.s 			page 19
+
+
+ 194:src/ssd1306/graphics.c **** }
+ 617              		.loc 1 194 1 view .LVU201
+ 618 0018 2BB0     		add	sp, sp, #172
+ 619              	.LCFI4:
+ 620              		.cfi_remember_state
+ 621              		.cfi_def_cfa_offset 84
+ 622              		@ sp needed
+ 623 001a BDEC0C8B 		vldm	sp!, {d8-d13}
+ 624              	.LCFI5:
+ 625              		.cfi_restore 90
+ 626              		.cfi_restore 91
+ 627              		.cfi_restore 88
+ 628              		.cfi_restore 89
+ 629              		.cfi_restore 86
+ 630              		.cfi_restore 87
+ 631              		.cfi_restore 84
+ 632              		.cfi_restore 85
+ 633              		.cfi_restore 82
+ 634              		.cfi_restore 83
+ 635              		.cfi_restore 80
+ 636              		.cfi_restore 81
+ 637              		.cfi_def_cfa_offset 36
+ 638 001e BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 639              	.L33:
+ 640 0022 00BF     		.align	2
+ 641              	.L32:
+ 642 0024 00000000 		.word	prev_tick.2
+ 643              	.L31:
+ 644              	.LCFI6:
+ 645              		.cfi_restore_state
+ 191:src/ssd1306/graphics.c ****         graphics_draw_cubes();
+ 646              		.loc 1 191 9 is_stmt 1 view .LVU202
+ 647              	.LBB214:
+ 648              	.LBI214:
+ 127:src/ssd1306/graphics.c ****     static uint32_t tick = 0;
+ 649              		.loc 1 127 13 view .LVU203
+ 650              	.LBB215:
+ 128:src/ssd1306/graphics.c ****     float value = audio_get_sample_vol();
+ 651              		.loc 1 128 5 view .LVU204
+ 129:src/ssd1306/graphics.c **** 
+ 652              		.loc 1 129 5 view .LVU205
+ 129:src/ssd1306/graphics.c **** 
+ 653              		.loc 1 129 19 is_stmt 0 view .LVU206
+ 654 0028 FFF7FEFF 		bl	audio_get_sample_vol
+ 655              	.LVL17:
+ 131:src/ssd1306/graphics.c ****     avg_audio_cursor++;
+ 656              		.loc 1 131 14 view .LVU207
+ 657 002c EE49     		ldr	r1, .L34
+ 131:src/ssd1306/graphics.c ****     avg_audio_cursor++;
+ 658              		.loc 1 131 33 view .LVU208
+ 659 002e EF4B     		ldr	r3, .L34+4
+ 131:src/ssd1306/graphics.c ****     avg_audio_cursor++;
+ 660              		.loc 1 131 14 view .LVU209
+ 661 0030 0A78     		ldrb	r2, [r1]	@ zero_extendqisi2
+ 662              	.LBB216:
+ 137:src/ssd1306/graphics.c ****     }
+ 663              		.loc 1 137 17 view .LVU210
+ARM GAS  /tmp/ccZhEbBz.s 			page 20
+
+
+ 664 0032 DFEDEF8A 		vldr.32	s17, .L34+8
+ 665              	.LBE216:
+ 141:src/ssd1306/graphics.c ****     camera_fov = (1 - value) * 0.8f + 2.1f;
+ 666              		.loc 1 141 33 view .LVU211
+ 667 0036 9FEDEF5A 		vldr.32	s10, .L34+12
+ 142:src/ssd1306/graphics.c **** 
+ 668              		.loc 1 142 37 view .LVU212
+ 669 003a DFEDEF5A 		vldr.32	s11, .L34+16
+ 670              	.LBB217:
+ 671              	.LBB218:
+ 102:src/ssd1306/graphics.c **** 
+ 672              		.loc 1 102 8 view .LVU213
+ 673 003e DFF8E8A3 		ldr	r10, .L34+64
+ 674              	.LBE218:
+ 675              	.LBE217:
+ 131:src/ssd1306/graphics.c ****     avg_audio_cursor++;
+ 676              		.loc 1 131 33 view .LVU214
+ 677 0042 03EB8200 		add	r0, r3, r2, lsl #2
+ 678 0046 80ED000A 		vstr.32	s0, [r0]
+ 679              	.LBB270:
+ 137:src/ssd1306/graphics.c ****     }
+ 680              		.loc 1 137 17 view .LVU215
+ 681 004a D3ED007A 		vldr.32	s15, [r3]
+ 682 004e D3ED016A 		vldr.32	s13, [r3, #4]
+ 683 0052 93ED027A 		vldr.32	s14, [r3, #8]
+ 684              	.LBE270:
+ 685              	.LBB271:
+ 686              	.LBB264:
+ 102:src/ssd1306/graphics.c **** 
+ 687              		.loc 1 102 8 view .LVU216
+ 688 0056 BAF80000 		ldrh	r0, [r10]
+ 689              	.LBE264:
+ 690              	.LBE271:
+ 691              	.LBB272:
+ 137:src/ssd1306/graphics.c ****     }
+ 692              		.loc 1 137 17 view .LVU217
+ 693 005a 77EEA87A 		vadd.f32	s15, s15, s17
+ 694              	.LBE272:
+ 142:src/ssd1306/graphics.c **** 
+ 695              		.loc 1 142 21 view .LVU218
+ 696 005e B7EE006A 		vmov.f32	s12, #1.0e+0
+ 697              	.LBB273:
+ 137:src/ssd1306/graphics.c ****     }
+ 698              		.loc 1 137 17 view .LVU219
+ 699 0062 77EEA67A 		vadd.f32	s15, s15, s13
+ 700 0066 D3ED036A 		vldr.32	s13, [r3, #12]
+ 701 006a 77EE877A 		vadd.f32	s15, s15, s14
+ 702 006e 93ED047A 		vldr.32	s14, [r3, #16]
+ 703 0072 77EEA67A 		vadd.f32	s15, s15, s13
+ 704 0076 D3ED056A 		vldr.32	s13, [r3, #20]
+ 705 007a 77EE877A 		vadd.f32	s15, s15, s14
+ 706 007e 93ED067A 		vldr.32	s14, [r3, #24]
+ 707 0082 77EEA67A 		vadd.f32	s15, s15, s13
+ 708 0086 D3ED076A 		vldr.32	s13, [r3, #28]
+ 709 008a 77EE877A 		vadd.f32	s15, s15, s14
+ 710 008e 93ED087A 		vldr.32	s14, [r3, #32]
+ 711 0092 77EEA67A 		vadd.f32	s15, s15, s13
+ARM GAS  /tmp/ccZhEbBz.s 			page 21
+
+
+ 712 0096 D3ED096A 		vldr.32	s13, [r3, #36]
+ 713 009a 77EE877A 		vadd.f32	s15, s15, s14
+ 714 009e 93ED0A7A 		vldr.32	s14, [r3, #40]
+ 715 00a2 77EEA67A 		vadd.f32	s15, s15, s13
+ 716 00a6 D3ED0B6A 		vldr.32	s13, [r3, #44]
+ 717 00aa 77EE877A 		vadd.f32	s15, s15, s14
+ 718 00ae 93ED0C7A 		vldr.32	s14, [r3, #48]
+ 719 00b2 77EEA67A 		vadd.f32	s15, s15, s13
+ 720 00b6 D3ED0D6A 		vldr.32	s13, [r3, #52]
+ 721 00ba 77EE877A 		vadd.f32	s15, s15, s14
+ 722 00be 93ED0E7A 		vldr.32	s14, [r3, #56]
+ 723 00c2 77EEA67A 		vadd.f32	s15, s15, s13
+ 724 00c6 D3ED0F6A 		vldr.32	s13, [r3, #60]
+ 725 00ca 77EE877A 		vadd.f32	s15, s15, s14
+ 726              	.LBE273:
+ 140:src/ssd1306/graphics.c ****     cube_speed = 0.3f * f_value + 0.14f;
+ 727              		.loc 1 140 13 view .LVU220
+ 728 00ce 9FEDCB7A 		vldr.32	s14, .L34+20
+ 729              	.LBB274:
+ 137:src/ssd1306/graphics.c ****     }
+ 730              		.loc 1 137 17 view .LVU221
+ 731 00d2 77EEA67A 		vadd.f32	s15, s15, s13
+ 732              	.LBE274:
+ 141:src/ssd1306/graphics.c ****     camera_fov = (1 - value) * 0.8f + 2.1f;
+ 733              		.loc 1 141 33 view .LVU222
+ 734 00d6 DFEDCA6A 		vldr.32	s13, .L34+24
+ 140:src/ssd1306/graphics.c ****     cube_speed = 0.3f * f_value + 0.14f;
+ 735              		.loc 1 140 13 view .LVU223
+ 736 00da 67EE877A 		vmul.f32	s15, s15, s14
+ 142:src/ssd1306/graphics.c **** 
+ 737              		.loc 1 142 37 view .LVU224
+ 738 00de 9FEDC97A 		vldr.32	s14, .L34+28
+ 141:src/ssd1306/graphics.c ****     camera_fov = (1 - value) * 0.8f + 2.1f;
+ 739              		.loc 1 141 33 view .LVU225
+ 740 00e2 E7EE856A 		vfma.f32	s13, s15, s10
+ 132:src/ssd1306/graphics.c ****     avg_audio_cursor &= (sizeof(avg_audio) / sizeof(float) - 1);
+ 741              		.loc 1 132 21 view .LVU226
+ 742 00e6 531C     		adds	r3, r2, #1
+ 133:src/ssd1306/graphics.c **** 
+ 743              		.loc 1 133 22 view .LVU227
+ 744 00e8 03F00F03 		and	r3, r3, #15
+ 142:src/ssd1306/graphics.c **** 
+ 745              		.loc 1 142 21 view .LVU228
+ 746 00ec 36EE406A 		vsub.f32	s12, s12, s0
+ 142:src/ssd1306/graphics.c **** 
+ 747              		.loc 1 142 37 view .LVU229
+ 748 00f0 F0EE477A 		vmov.f32	s15, s14
+ 749 00f4 E6EE257A 		vfma.f32	s15, s12, s11
+ 133:src/ssd1306/graphics.c **** 
+ 750              		.loc 1 133 22 view .LVU230
+ 751 00f8 0B70     		strb	r3, [r1]
+ 141:src/ssd1306/graphics.c ****     camera_fov = (1 - value) * 0.8f + 2.1f;
+ 752              		.loc 1 141 16 view .LVU231
+ 753 00fa C34B     		ldr	r3, .L34+32
+ 754 00fc C3ED006A 		vstr.32	s13, [r3]
+ 142:src/ssd1306/graphics.c **** 
+ 755              		.loc 1 142 16 view .LVU232
+ARM GAS  /tmp/ccZhEbBz.s 			page 22
+
+
+ 756 0100 C24B     		ldr	r3, .L34+36
+ 757 0102 C3ED007A 		vstr.32	s15, [r3]
+ 758              	.LBB275:
+ 759              	.LBB265:
+ 102:src/ssd1306/graphics.c **** 
+ 760              		.loc 1 102 8 view .LVU233
+ 761 0106 00EB4003 		add	r3, r0, r0, lsl #1
+ 762 010a 03EB0313 		add	r3, r3, r3, lsl #4
+ 763 010e 03EB0323 		add	r3, r3, r3, lsl #8
+ 764 0112 00EB8303 		add	r3, r0, r3, lsl #2
+ 765 0116 C3F38D02 		ubfx	r2, r3, #2, #14
+ 766 011a 42EA8333 		orr	r3, r2, r3, lsl #14
+ 102:src/ssd1306/graphics.c **** 
+ 767              		.loc 1 102 7 view .LVU234
+ 768 011e 9BB2     		uxth	r3, r3
+ 769 0120 40F6CC42 		movw	r2, #3276
+ 770 0124 9342     		cmp	r3, r2
+ 771              	.LBE265:
+ 772              	.LBE275:
+ 129:src/ssd1306/graphics.c **** 
+ 773              		.loc 1 129 19 view .LVU235
+ 774 0126 B0EE40BA 		vmov.f32	s22, s0
+ 775              	.LVL18:
+ 131:src/ssd1306/graphics.c ****     avg_audio_cursor++;
+ 776              		.loc 1 131 5 is_stmt 1 view .LVU236
+ 132:src/ssd1306/graphics.c ****     avg_audio_cursor &= (sizeof(avg_audio) / sizeof(float) - 1);
+ 777              		.loc 1 132 5 view .LVU237
+ 133:src/ssd1306/graphics.c **** 
+ 778              		.loc 1 133 5 view .LVU238
+ 135:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != sizeof(avg_audio) / sizeof(float); i++){
+ 779              		.loc 1 135 5 view .LVU239
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 780              		.loc 1 136 5 view .LVU240
+ 781              	.LBB276:
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 782              		.loc 1 136 9 view .LVU241
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 783              		.loc 1 136 26 discriminator 1 view .LVU242
+ 137:src/ssd1306/graphics.c ****     }
+ 784              		.loc 1 137 9 view .LVU243
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 785              		.loc 1 136 65 discriminator 3 view .LVU244
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 786              		.loc 1 136 26 discriminator 1 view .LVU245
+ 137:src/ssd1306/graphics.c ****     }
+ 787              		.loc 1 137 9 view .LVU246
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 788              		.loc 1 136 65 discriminator 3 view .LVU247
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 789              		.loc 1 136 26 discriminator 1 view .LVU248
+ 137:src/ssd1306/graphics.c ****     }
+ 790              		.loc 1 137 9 view .LVU249
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 791              		.loc 1 136 65 discriminator 3 view .LVU250
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 792              		.loc 1 136 26 discriminator 1 view .LVU251
+ 137:src/ssd1306/graphics.c ****     }
+ARM GAS  /tmp/ccZhEbBz.s 			page 23
+
+
+ 793              		.loc 1 137 9 view .LVU252
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 794              		.loc 1 136 65 discriminator 3 view .LVU253
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 795              		.loc 1 136 26 discriminator 1 view .LVU254
+ 137:src/ssd1306/graphics.c ****     }
+ 796              		.loc 1 137 9 view .LVU255
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 797              		.loc 1 136 65 discriminator 3 view .LVU256
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 798              		.loc 1 136 26 discriminator 1 view .LVU257
+ 137:src/ssd1306/graphics.c ****     }
+ 799              		.loc 1 137 9 view .LVU258
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 800              		.loc 1 136 65 discriminator 3 view .LVU259
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 801              		.loc 1 136 26 discriminator 1 view .LVU260
+ 137:src/ssd1306/graphics.c ****     }
+ 802              		.loc 1 137 9 view .LVU261
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 803              		.loc 1 136 65 discriminator 3 view .LVU262
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 804              		.loc 1 136 26 discriminator 1 view .LVU263
+ 137:src/ssd1306/graphics.c ****     }
+ 805              		.loc 1 137 9 view .LVU264
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 806              		.loc 1 136 65 discriminator 3 view .LVU265
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 807              		.loc 1 136 26 discriminator 1 view .LVU266
+ 137:src/ssd1306/graphics.c ****     }
+ 808              		.loc 1 137 9 view .LVU267
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 809              		.loc 1 136 65 discriminator 3 view .LVU268
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 810              		.loc 1 136 26 discriminator 1 view .LVU269
+ 137:src/ssd1306/graphics.c ****     }
+ 811              		.loc 1 137 9 view .LVU270
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 812              		.loc 1 136 65 discriminator 3 view .LVU271
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 813              		.loc 1 136 26 discriminator 1 view .LVU272
+ 137:src/ssd1306/graphics.c ****     }
+ 814              		.loc 1 137 9 view .LVU273
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 815              		.loc 1 136 65 discriminator 3 view .LVU274
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 816              		.loc 1 136 26 discriminator 1 view .LVU275
+ 137:src/ssd1306/graphics.c ****     }
+ 817              		.loc 1 137 9 view .LVU276
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 818              		.loc 1 136 65 discriminator 3 view .LVU277
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 819              		.loc 1 136 26 discriminator 1 view .LVU278
+ 137:src/ssd1306/graphics.c ****     }
+ 820              		.loc 1 137 9 view .LVU279
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 821              		.loc 1 136 65 discriminator 3 view .LVU280
+ARM GAS  /tmp/ccZhEbBz.s 			page 24
+
+
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 822              		.loc 1 136 26 discriminator 1 view .LVU281
+ 137:src/ssd1306/graphics.c ****     }
+ 823              		.loc 1 137 9 view .LVU282
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 824              		.loc 1 136 65 discriminator 3 view .LVU283
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 825              		.loc 1 136 26 discriminator 1 view .LVU284
+ 137:src/ssd1306/graphics.c ****     }
+ 826              		.loc 1 137 9 view .LVU285
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 827              		.loc 1 136 65 discriminator 3 view .LVU286
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 828              		.loc 1 136 26 discriminator 1 view .LVU287
+ 137:src/ssd1306/graphics.c ****     }
+ 829              		.loc 1 137 9 view .LVU288
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 830              		.loc 1 136 65 discriminator 3 view .LVU289
+ 136:src/ssd1306/graphics.c ****         f_value += avg_audio[i];
+ 831              		.loc 1 136 26 discriminator 1 view .LVU290
+ 832              	.LBE276:
+ 140:src/ssd1306/graphics.c ****     cube_speed = 0.3f * f_value + 0.14f;
+ 833              		.loc 1 140 5 view .LVU291
+ 141:src/ssd1306/graphics.c ****     camera_fov = (1 - value) * 0.8f + 2.1f;
+ 834              		.loc 1 141 5 view .LVU292
+ 142:src/ssd1306/graphics.c **** 
+ 835              		.loc 1 142 5 view .LVU293
+ 144:src/ssd1306/graphics.c **** 
+ 836              		.loc 1 144 5 view .LVU294
+ 837              	.LBB277:
+ 838              	.LBI217:
+ 100:src/ssd1306/graphics.c ****     static uint16_t tick = 0;
+ 839              		.loc 1 100 13 view .LVU295
+ 840              	.LBB266:
+ 101:src/ssd1306/graphics.c ****     if(!(tick % 20)){
+ 841              		.loc 1 101 5 view .LVU296
+ 102:src/ssd1306/graphics.c **** 
+ 842              		.loc 1 102 5 view .LVU297
+ 102:src/ssd1306/graphics.c **** 
+ 843              		.loc 1 102 7 is_stmt 0 view .LVU298
+ 844 012a 40F2B282 		bls	.L28
+ 845 012e DFF8FCB2 		ldr	fp, .L34+68
+ 846              	.LVL19:
+ 847              	.L10:
+ 124:src/ssd1306/graphics.c **** }
+ 848              		.loc 1 124 5 is_stmt 1 view .LVU299
+ 849              	.LBE266:
+ 850              	.LBE277:
+ 851              	.LBB278:
+ 147:src/ssd1306/graphics.c ****         graphics_process_cube(cube_list + i);
+ 852              		.loc 1 147 36 is_stmt 0 view .LVU300
+ 853 0132 9FEDB08A 		vldr.32	s16, .L34+12
+ 854 0136 DFF8F882 		ldr	r8, .L34+72
+ 855              	.LBB279:
+ 856              	.LBB280:
+ 857              	.LBB281:
+ 858              	.LBB282:
+ARM GAS  /tmp/ccZhEbBz.s 			page 25
+
+
+ 859              	.LBB283:
+ 860              	.LBB284:
+ 861              	.LBB285:
+ 862              	.LBB286:
+  48:src/ssd1306/ran.h **** }
+ 863              		.loc 2 48 31 view .LVU301
+ 864 013a 9FEDB5AA 		vldr.32	s20, .L34+40
+ 865              	.LBE286:
+ 866              	.LBE285:
+ 867              	.LBE284:
+ 868              	.LBE283:
+  71:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+ 869              		.loc 1 71 44 view .LVU302
+ 870 013e DFEDB58A 		vldr.32	s17, .L34+44
+ 871 0142 9FEDB59A 		vldr.32	s18, .L34+48
+ 872              	.LBE282:
+ 873              	.LBE281:
+ 874              	.LBE280:
+ 875              	.LBE279:
+ 876              	.LBE278:
+ 877              	.LBB408:
+ 878              	.LBB267:
+ 124:src/ssd1306/graphics.c **** }
+ 879              		.loc 1 124 9 view .LVU303
+ 880 0146 0130     		adds	r0, r0, #1
+ 881              	.LBE267:
+ 882              	.LBE408:
+ 883              	.LBB409:
+ 147:src/ssd1306/graphics.c ****         graphics_process_cube(cube_list + i);
+ 884              		.loc 1 147 36 view .LVU304
+ 885 0148 3BEE088A 		vadd.f32	s16, s22, s16
+ 886              	.LBE409:
+ 887              	.LBB410:
+ 888              	.LBB268:
+ 124:src/ssd1306/graphics.c **** }
+ 889              		.loc 1 124 9 view .LVU305
+ 890 014c AAF80000 		strh	r0, [r10]	@ movhi
+ 891              	.LBE268:
+ 892              	.LBE410:
+ 146:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 893              		.loc 1 146 5 is_stmt 1 view .LVU306
+ 894              	.LBB411:
+ 146:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 895              		.loc 1 146 9 view .LVU307
+ 896              	.LVL20:
+ 146:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 897              		.loc 1 146 26 discriminator 1 view .LVU308
+ 898 0150 D946     		mov	r9, fp
+ 899              	.LVL21:
+ 900              	.L18:
+ 147:src/ssd1306/graphics.c ****         graphics_process_cube(cube_list + i);
+ 901              		.loc 1 147 9 view .LVU309
+ 902              	.LBB406:
+ 903              	.LBB404:
+  55:src/ssd1306/graphics.c ****     
+ 904              		.loc 1 55 7 is_stmt 0 view .LVU310
+ 905 0152 98F80030 		ldrb	r3, [r8]	@ zero_extendqisi2
+ARM GAS  /tmp/ccZhEbBz.s 			page 26
+
+
+ 906              	.LBE404:
+ 907              	.LBE406:
+ 147:src/ssd1306/graphics.c ****         graphics_process_cube(cube_list + i);
+ 908              		.loc 1 147 28 view .LVU311
+ 909 0156 88ED018A 		vstr.32	s16, [r8, #4]
+ 148:src/ssd1306/graphics.c ****     }
+ 910              		.loc 1 148 9 is_stmt 1 view .LVU312
+ 911              	.LVL22:
+ 912              	.LBB407:
+ 913              	.LBI279:
+  54:src/ssd1306/graphics.c ****     if(!cube->alive)return;
+ 914              		.loc 1 54 13 view .LVU313
+ 915              	.LBB405:
+  55:src/ssd1306/graphics.c ****     
+ 916              		.loc 1 55 5 view .LVU314
+  55:src/ssd1306/graphics.c ****     
+ 917              		.loc 1 55 7 is_stmt 0 view .LVU315
+ 918 015a 002B     		cmp	r3, #0
+ 919 015c 00F02881 		beq	.L13
+ 920 0160 D8ED069A 		vldr.32	s19, [r8, #24]
+ 921 0164 D8ED077A 		vldr.32	s15, [r8, #28]
+ 922 0168 D8ED05AA 		vldr.32	s21, [r8, #20]
+ 923 016c 98ED020A 		vldr.32	s0, [r8, #8]
+ 924 0170 98ED035A 		vldr.32	s10, [r8, #12]
+ 925 0174 D8ED040A 		vldr.32	s1, [r8, #16]
+ 926              	.LBB394:
+ 927              	.LBB389:
+ 928              	.LBB366:
+ 929              	.LBB359:
+ 930              	.LBB294:
+ 931              	.LBB295:
+  48:src/ssd1306/ran.h **** }
+ 932              		.loc 2 48 31 view .LVU316
+ 933 0178 69EE8A6A 		vmul.f32	s13, s19, s20
+ 934              	.LBE295:
+ 935              	.LBE294:
+ 936              	.LBB302:
+ 937              	.LBB303:
+ 938 017c 27EE8A7A 		vmul.f32	s14, s15, s20
+ 939              	.LBE303:
+ 940              	.LBE302:
+ 941              	.LBB310:
+ 942              	.LBB287:
+ 943 0180 2AEE8A6A 		vmul.f32	s12, s21, s20
+ 944              	.LBE287:
+ 945              	.LBE310:
+ 946              	.LBB311:
+ 947              	.LBB296:
+  48:src/ssd1306/ran.h **** }
+ 948              		.loc 2 48 23 view .LVU317
+ 949 0184 FDEEE66A 		vcvt.s32.f32	s13, s13
+ 950              	.LBE296:
+ 951              	.LBE311:
+ 952              	.LBB312:
+ 953              	.LBB304:
+ 954 0188 BDEEC77A 		vcvt.s32.f32	s14, s14
+ 955              	.LBE304:
+ARM GAS  /tmp/ccZhEbBz.s 			page 27
+
+
+ 956              	.LBE312:
+ 957              	.LBB313:
+ 958              	.LBB288:
+ 959 018c BDEEC66A 		vcvt.s32.f32	s12, s12
+ 960              	.LBE288:
+ 961              	.LBE313:
+ 962              	.LBB314:
+ 963              	.LBB297:
+ 964 0190 16EE902A 		vmov	r2, s13	@ int
+ 965              	.LBE297:
+ 966              	.LBE314:
+ 967              	.LBB315:
+ 968              	.LBB305:
+ 969 0194 17EE103A 		vmov	r3, s14	@ int
+ 970              	.LBE305:
+ 971              	.LBE315:
+ 972              	.LBB316:
+ 973              	.LBB289:
+ 974 0198 16EE100A 		vmov	r0, s12	@ int
+ 975              	.LBE289:
+ 976              	.LBE316:
+ 977              	.LBB317:
+ 978              	.LBB298:
+  48:src/ssd1306/ran.h **** }
+ 979              		.loc 2 48 57 view .LVU318
+ 980 019c C2F30B05 		ubfx	r5, r2, #0, #12
+ 981              	.LBE298:
+ 982              	.LBE317:
+ 983              	.LBB318:
+ 984              	.LBB319:
+  51:src/ssd1306/ran.h **** }
+ 985              		.loc 2 51 58 view .LVU319
+ 986 01a0 02F58061 		add	r1, r2, #1024
+ 987              	.LBE319:
+ 988              	.LBE318:
+ 989              	.LBB324:
+ 990              	.LBB325:
+ 991 01a4 03F58062 		add	r2, r3, #1024
+ 992              	.LBE325:
+ 993              	.LBE324:
+ 994              	.LBB330:
+ 995              	.LBB290:
+  48:src/ssd1306/ran.h **** }
+ 996              		.loc 2 48 57 view .LVU320
+ 997 01a8 C0F30B06 		ubfx	r6, r0, #0, #12
+ 998              	.LBE290:
+ 999              	.LBE330:
+ 1000              	.LBB331:
+ 1001              	.LBB306:
+ 1002 01ac C3F30B04 		ubfx	r4, r3, #0, #12
+ 1003              	.LBE306:
+ 1004              	.LBE331:
+ 1005              	.LBB332:
+ 1006              	.LBB333:
+  51:src/ssd1306/ran.h **** }
+ 1007              		.loc 2 51 58 view .LVU321
+ 1008 01b0 00F58060 		add	r0, r0, #1024
+ARM GAS  /tmp/ccZhEbBz.s 			page 28
+
+
+ 1009              	.LBE333:
+ 1010              	.LBE332:
+ 1011              	.LBB338:
+ 1012              	.LBB326:
+  51:src/ssd1306/ran.h **** }
+ 1013              		.loc 2 51 66 view .LVU322
+ 1014 01b4 C2F30B02 		ubfx	r2, r2, #0, #12
+ 1015              	.LBE326:
+ 1016              	.LBE338:
+ 1017              	.LBB339:
+ 1018              	.LBB307:
+  48:src/ssd1306/ran.h **** }
+ 1019              		.loc 2 48 22 view .LVU323
+ 1020 01b8 09EB8403 		add	r3, r9, r4, lsl #2
+ 1021              	.LBE307:
+ 1022              	.LBE339:
+ 1023              	.LBB340:
+ 1024              	.LBB327:
+  51:src/ssd1306/ran.h **** }
+ 1025              		.loc 2 51 22 view .LVU324
+ 1026 01bc 09EB8202 		add	r2, r9, r2, lsl #2
+ 1027              	.LBE327:
+ 1028              	.LBE340:
+ 1029              	.LBB341:
+ 1030              	.LBB291:
+  48:src/ssd1306/ran.h **** }
+ 1031              		.loc 2 48 22 view .LVU325
+ 1032 01c0 09EB8606 		add	r6, r9, r6, lsl #2
+ 1033              	.LBE291:
+ 1034              	.LBE341:
+ 1035              	.LBB342:
+ 1036              	.LBB299:
+ 1037 01c4 09EB8505 		add	r5, r9, r5, lsl #2
+ 1038              	.LBE299:
+ 1039              	.LBE342:
+ 1040              	.LBB343:
+ 1041              	.LBB334:
+  51:src/ssd1306/ran.h **** }
+ 1042              		.loc 2 51 66 view .LVU326
+ 1043 01c8 C0F30B00 		ubfx	r0, r0, #0, #12
+ 1044              	.LBE334:
+ 1045              	.LBE343:
+ 1046              	.LBB344:
+ 1047              	.LBB308:
+  48:src/ssd1306/ran.h **** }
+ 1048              		.loc 2 48 22 view .LVU327
+ 1049 01cc D3ED003A 		vldr.32	s7, [r3]
+ 1050              	.LBE308:
+ 1051              	.LBE344:
+ 1052              	.LBB345:
+ 1053              	.LBB292:
+ 1054 01d0 D6ED004A 		vldr.32	s9, [r6]
+ 1055              	.LBE292:
+ 1056              	.LBE345:
+ 1057              	.LBB346:
+ 1058              	.LBB300:
+ 1059 01d4 95ED004A 		vldr.32	s8, [r5]
+ARM GAS  /tmp/ccZhEbBz.s 			page 29
+
+
+ 1060 01d8 904B     		ldr	r3, .L34+52
+ 1061              	.LBE300:
+ 1062              	.LBE346:
+ 1063              	.LBB347:
+ 1064              	.LBB328:
+  51:src/ssd1306/ran.h **** }
+ 1065              		.loc 2 51 22 view .LVU328
+ 1066 01da D2ED006A 		vldr.32	s13, [r2]
+ 1067              	.LBE328:
+ 1068              	.LBE347:
+ 1069              	.LBE359:
+ 1070              	.LBE366:
+  70:src/ssd1306/graphics.c ****         p_verts[i][0] = projected_p.x * 32 + 64;
+ 1071              		.loc 1 70 31 view .LVU329
+ 1072 01de 8B4A     		ldr	r2, .L34+36
+ 1073              	.LBB367:
+ 1074              	.LBB360:
+ 1075              	.LBB348:
+ 1076              	.LBB320:
+  51:src/ssd1306/ran.h **** }
+ 1077              		.loc 2 51 66 view .LVU330
+ 1078 01e0 C1F30B01 		ubfx	r1, r1, #0, #12
+ 1079              	.LBE320:
+ 1080              	.LBE348:
+ 1081              	.LBB349:
+ 1082              	.LBB335:
+  51:src/ssd1306/ran.h **** }
+ 1083              		.loc 2 51 22 view .LVU331
+ 1084 01e4 09EB8000 		add	r0, r9, r0, lsl #2
+ 1085              	.LBE335:
+ 1086              	.LBE349:
+ 1087              	.LBB350:
+ 1088              	.LBB321:
+ 1089 01e8 09EB8101 		add	r1, r9, r1, lsl #2
+ 1090              	.LBE321:
+ 1091              	.LBE350:
+ 1092              	.LBB351:
+ 1093              	.LBB336:
+ 1094 01ec D0ED005A 		vldr.32	s11, [r0]
+ 1095              	.LBE336:
+ 1096              	.LBE351:
+ 1097              	.LBB352:
+ 1098              	.LBB322:
+ 1099 01f0 91ED006A 		vldr.32	s12, [r1]
+ 1100              	.LBE322:
+ 1101              	.LBE352:
+ 1102              	.LBE360:
+ 1103              	.LBE367:
+  70:src/ssd1306/graphics.c ****         p_verts[i][0] = projected_p.x * 32 + 64;
+ 1104              		.loc 1 70 31 view .LVU332
+ 1105 01f4 92ED001A 		vldr.32	s2, [r2]
+ 1106              	.LBB368:
+ 1107              	.LBB361:
+  65:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * s_x,
+ 1108              		.loc 2 65 21 view .LVU333
+ 1109 01f8 F1EE631A 		vneg.f32	s3, s7
+  66:src/ssd1306/ran.h ****         .z = (v.x * -s_z + v.y * c_z) * -s_x +
+ARM GAS  /tmp/ccZhEbBz.s 			page 30
+
+
+ 1110              		.loc 2 66 41 view .LVU334
+ 1111 01fc B1EE442A 		vneg.f32	s4, s8
+  67:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * c_x,
+ 1112              		.loc 2 67 41 view .LVU335
+ 1113 0200 F1EE642A 		vneg.f32	s5, s9
+ 1114 0204 0AAA     		add	r2, sp, #40
+ 1115 0206 03F16004 		add	r4, r3, #96
+ 1116              	.LBE361:
+ 1117              	.LBE368:
+ 1118              	.LBE389:
+ 1119              	.LBE394:
+  59:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != sizeof(cube_verts) / sizeof(RanVec3); i++){
+ 1120              		.loc 1 59 13 view .LVU336
+ 1121 020a 0021     		movs	r1, #0
+ 1122              	.LBB395:
+ 1123              	.LBB390:
+  65:src/ssd1306/graphics.c ****             t_vert.y = NEAR_CLIPPING;
+ 1124              		.loc 1 65 11 view .LVU337
+ 1125 020c B0EE083A 		vmov.f32	s6, #3.0e+0
+ 1126              	.L16:
+ 1127              	.LVL23:
+  61:src/ssd1306/graphics.c ****         t_vert = ran_v3_rot(t_vert, cube->rot);
+ 1128              		.loc 1 61 9 is_stmt 1 view .LVU338
+ 1129              	.LBB369:
+ 1130              	.LBI369:
+  39:src/ssd1306/ran.h ****     return (RanVec3){v.x * scalar, v.y * scalar, v.z * scalar};
+ 1131              		.loc 2 39 23 view .LVU339
+ 1132              	.LBB370:
+  40:src/ssd1306/ran.h **** }
+ 1133              		.loc 2 40 5 view .LVU340
+ 1134              	.LBE370:
+ 1135              	.LBE369:
+  66:src/ssd1306/graphics.c ****             culled_verts++;
+ 1136              		.loc 1 66 13 view .LVU341
+  67:src/ssd1306/graphics.c ****         }
+ 1137              		.loc 1 67 13 view .LVU342
+ 1138              	.LBB373:
+ 1139              	.LBB371:
+  40:src/ssd1306/ran.h **** }
+ 1140              		.loc 2 40 40 is_stmt 0 view .LVU343
+ 1141 0210 D3ED01BA 		vldr.32	s23, [r3, #4]
+  40:src/ssd1306/ran.h **** }
+ 1142              		.loc 2 40 26 view .LVU344
+ 1143 0214 D3ED00CA 		vldr.32	s25, [r3]
+  40:src/ssd1306/ran.h **** }
+ 1144              		.loc 2 40 54 view .LVU345
+ 1145 0218 93ED027A 		vldr.32	s14, [r3, #8]
+  40:src/ssd1306/ran.h **** }
+ 1146              		.loc 2 40 40 view .LVU346
+ 1147 021c 68EE2BBA 		vmul.f32	s23, s16, s23
+  40:src/ssd1306/ran.h **** }
+ 1148              		.loc 2 40 26 view .LVU347
+ 1149 0220 68EE2CCA 		vmul.f32	s25, s16, s25
+ 1150              	.LBE371:
+ 1151              	.LBE373:
+ 1152              	.LBB374:
+ 1153              	.LBB362:
+ARM GAS  /tmp/ccZhEbBz.s 			page 31
+
+
+  64:src/ssd1306/ran.h ****         .y = (v.x * -s_z + v.y * c_z) * c_x +
+ 1154              		.loc 2 64 31 view .LVU348
+ 1155 0224 23EEABCA 		vmul.f32	s24, s7, s23
+ 1156              	.LBE362:
+ 1157              	.LBE374:
+ 1158              	.LBB375:
+ 1159              	.LBB372:
+  40:src/ssd1306/ran.h **** }
+ 1160              		.loc 2 40 54 view .LVU349
+ 1161 0228 28EE077A 		vmul.f32	s14, s16, s14
+ 1162              	.LVL24:
+  40:src/ssd1306/ran.h **** }
+ 1163              		.loc 2 40 54 view .LVU350
+ 1164              	.LBE372:
+ 1165              	.LBE375:
+  62:src/ssd1306/graphics.c ****         t_vert = ran_v3_add(t_vert, cube->pos);
+ 1166              		.loc 1 62 9 is_stmt 1 view .LVU351
+ 1167              	.LBB376:
+ 1168              	.LBI283:
+  55:src/ssd1306/ran.h ****     float s_x = ran_fast_sin(euler.x);
+ 1169              		.loc 2 55 23 view .LVU352
+ 1170              	.LBB363:
+  56:src/ssd1306/ran.h ****     float s_y = ran_fast_sin(euler.y);
+ 1171              		.loc 2 56 5 view .LVU353
+ 1172              	.LBB353:
+ 1173              	.LBI285:
+  47:src/ssd1306/ran.h ****     return sine_table[(int)(x * (4095 / 2.0f / RAN_PI)) & 0xfff];
+ 1174              		.loc 2 47 21 view .LVU354
+ 1175              	.LBB293:
+  48:src/ssd1306/ran.h **** }
+ 1176              		.loc 2 48 5 view .LVU355
+  48:src/ssd1306/ran.h **** }
+ 1177              		.loc 2 48 5 is_stmt 0 view .LVU356
+ 1178              	.LBE293:
+ 1179              	.LBE353:
+  57:src/ssd1306/ran.h ****     float s_z = ran_fast_sin(euler.z);
+ 1180              		.loc 2 57 5 is_stmt 1 view .LVU357
+ 1181              	.LBB354:
+ 1182              	.LBI294:
+  47:src/ssd1306/ran.h ****     return sine_table[(int)(x * (4095 / 2.0f / RAN_PI)) & 0xfff];
+ 1183              		.loc 2 47 21 view .LVU358
+ 1184              	.LBB301:
+  48:src/ssd1306/ran.h **** }
+ 1185              		.loc 2 48 5 view .LVU359
+  48:src/ssd1306/ran.h **** }
+ 1186              		.loc 2 48 5 is_stmt 0 view .LVU360
+ 1187              	.LBE301:
+ 1188              	.LBE354:
+  58:src/ssd1306/ran.h ****     float c_x = ran_fast_cos(euler.x);
+ 1189              		.loc 2 58 5 is_stmt 1 view .LVU361
+ 1190              	.LBB355:
+ 1191              	.LBI302:
+  47:src/ssd1306/ran.h ****     return sine_table[(int)(x * (4095 / 2.0f / RAN_PI)) & 0xfff];
+ 1192              		.loc 2 47 21 view .LVU362
+ 1193              	.LBB309:
+  48:src/ssd1306/ran.h **** }
+ 1194              		.loc 2 48 5 view .LVU363
+ARM GAS  /tmp/ccZhEbBz.s 			page 32
+
+
+  48:src/ssd1306/ran.h **** }
+ 1195              		.loc 2 48 5 is_stmt 0 view .LVU364
+ 1196              	.LBE309:
+ 1197              	.LBE355:
+  59:src/ssd1306/ran.h ****     float c_y = ran_fast_cos(euler.y);
+ 1198              		.loc 2 59 5 is_stmt 1 view .LVU365
+ 1199              	.LBB356:
+ 1200              	.LBI332:
+  50:src/ssd1306/ran.h ****     return sine_table[((int)(x * (4095 / 2.0f / RAN_PI)) + 1024) & 0xfff];
+ 1201              		.loc 2 50 21 view .LVU366
+ 1202              	.LBB337:
+  51:src/ssd1306/ran.h **** }
+ 1203              		.loc 2 51 5 view .LVU367
+  51:src/ssd1306/ran.h **** }
+ 1204              		.loc 2 51 5 is_stmt 0 view .LVU368
+ 1205              	.LBE337:
+ 1206              	.LBE356:
+  60:src/ssd1306/ran.h ****     float c_z = ran_fast_cos(euler.z);
+ 1207              		.loc 2 60 5 is_stmt 1 view .LVU369
+ 1208              	.LBB357:
+ 1209              	.LBI318:
+  50:src/ssd1306/ran.h ****     return sine_table[((int)(x * (4095 / 2.0f / RAN_PI)) + 1024) & 0xfff];
+ 1210              		.loc 2 50 21 view .LVU370
+ 1211              	.LBB323:
+  51:src/ssd1306/ran.h **** }
+ 1212              		.loc 2 51 5 view .LVU371
+  51:src/ssd1306/ran.h **** }
+ 1213              		.loc 2 51 5 is_stmt 0 view .LVU372
+ 1214              	.LBE323:
+ 1215              	.LBE357:
+  61:src/ssd1306/ran.h **** 
+ 1216              		.loc 2 61 5 is_stmt 1 view .LVU373
+ 1217              	.LBB358:
+ 1218              	.LBI324:
+  50:src/ssd1306/ran.h ****     return sine_table[((int)(x * (4095 / 2.0f / RAN_PI)) + 1024) & 0xfff];
+ 1219              		.loc 2 50 21 view .LVU374
+ 1220              	.LBB329:
+  51:src/ssd1306/ran.h **** }
+ 1221              		.loc 2 51 5 view .LVU375
+  51:src/ssd1306/ran.h **** }
+ 1222              		.loc 2 51 5 is_stmt 0 view .LVU376
+ 1223              	.LBE329:
+ 1224              	.LBE358:
+  63:src/ssd1306/ran.h ****         .x = (v.x * c_z + v.y * s_z) * c_y + v.z * s_y,
+ 1225              		.loc 2 63 5 is_stmt 1 view .LVU377
+  64:src/ssd1306/ran.h ****         .y = (v.x * -s_z + v.y * c_z) * c_x +
+ 1226              		.loc 2 64 25 is_stmt 0 view .LVU378
+ 1227 022c A6EEACCA 		vfma.f32	s24, s13, s25
+ 1228              	.LBE363:
+ 1229              	.LBE376:
+ 1230              	.LBE390:
+  60:src/ssd1306/graphics.c ****         RanVec3 t_vert = ran_v3_scale(cube_verts[i], cube->scale);
+ 1231              		.loc 1 60 26 discriminator 1 view .LVU379
+ 1232 0230 0C33     		adds	r3, r3, #12
+ 1233              	.LVL25:
+ 1234              	.LBB391:
+  67:src/ssd1306/graphics.c ****         }
+ARM GAS  /tmp/ccZhEbBz.s 			page 33
+
+
+ 1235              		.loc 1 67 25 view .LVU380
+ 1236 0232 481C     		adds	r0, r1, #1
+ 1237              	.LBB377:
+ 1238              	.LBB364:
+  66:src/ssd1306/ran.h ****         .z = (v.x * -s_z + v.y * c_z) * -s_x +
+ 1239              		.loc 2 66 52 view .LVU381
+ 1240 0234 26EE07DA 		vmul.f32	s26, s12, s14
+  65:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * s_x,
+ 1241              		.loc 2 65 32 view .LVU382
+ 1242 0238 66EEABBA 		vmul.f32	s23, s13, s23
+ 1243              	.LVL26:
+  66:src/ssd1306/ran.h ****         .z = (v.x * -s_z + v.y * c_z) * -s_x +
+ 1244              		.loc 2 66 46 view .LVU383
+ 1245 023c A2EE0CDA 		vfma.f32	s26, s4, s24
+ 1246              	.LBE364:
+ 1247              	.LBE377:
+ 1248              	.LBE391:
+  60:src/ssd1306/graphics.c ****         RanVec3 t_vert = ran_v3_scale(cube_verts[i], cube->scale);
+ 1249              		.loc 1 60 26 discriminator 1 view .LVU384
+ 1250 0240 0832     		adds	r2, r2, #8
+ 1251              	.LBB392:
+ 1252              	.LBB378:
+ 1253              	.LBB365:
+  65:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * s_x,
+ 1254              		.loc 2 65 26 view .LVU385
+ 1255 0242 E1EEACBA 		vfma.f32	s23, s3, s25
+  64:src/ssd1306/ran.h ****         .y = (v.x * -s_z + v.y * c_z) * c_x +
+ 1256              		.loc 2 64 50 view .LVU386
+ 1257 0246 24EE077A 		vmul.f32	s14, s8, s14
+ 1258              	.LVL27:
+  68:src/ssd1306/ran.h ****     };
+ 1259              		.loc 2 68 59 view .LVU387
+ 1260 024a 65EE8DCA 		vmul.f32	s25, s11, s26
+ 1261              	.LVL28:
+  64:src/ssd1306/ran.h ****         .y = (v.x * -s_z + v.y * c_z) * c_x +
+ 1262              		.loc 2 64 44 view .LVU388
+ 1263 024e A6EE0C7A 		vfma.f32	s14, s12, s24
+  66:src/ssd1306/ran.h ****         .z = (v.x * -s_z + v.y * c_z) * -s_x +
+ 1264              		.loc 2 66 59 view .LVU389
+ 1265 0252 24EE8DCA 		vmul.f32	s24, s9, s26
+  67:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * c_x,
+ 1266              		.loc 2 67 46 view .LVU390
+ 1267 0256 E2EEABCA 		vfma.f32	s25, s5, s23
+ 1268              	.LVL29:
+  65:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * s_x,
+ 1269              		.loc 2 65 45 view .LVU391
+ 1270 025a A5EEABCA 		vfma.f32	s24, s11, s23
+ 1271              	.LVL30:
+  65:src/ssd1306/ran.h ****              ((v.x * c_z + v.y * s_z) * -s_y + v.z * c_y) * s_x,
+ 1272              		.loc 2 65 45 view .LVU392
+ 1273              	.LBE365:
+ 1274              	.LBE378:
+  63:src/ssd1306/graphics.c **** 
+ 1275              		.loc 1 63 9 is_stmt 1 view .LVU393
+ 1276              	.LBB379:
+ 1277              	.LBI379:
+  27:src/ssd1306/ran.h ****     return (RanVec3){v1.x + v2.x, v1.y + v2.y, v1.z + v2.z};
+ARM GAS  /tmp/ccZhEbBz.s 			page 34
+
+
+ 1278              		.loc 2 27 23 view .LVU394
+ 1279              	.LBB380:
+  28:src/ssd1306/ran.h **** }
+ 1280              		.loc 2 28 5 view .LVU395
+  28:src/ssd1306/ran.h **** }
+ 1281              		.loc 2 28 27 is_stmt 0 view .LVU396
+ 1282 025e 30EE077A 		vadd.f32	s14, s0, s14
+ 1283              	.LVL31:
+  28:src/ssd1306/ran.h **** }
+ 1284              		.loc 2 28 40 view .LVU397
+ 1285 0262 75EE0CBA 		vadd.f32	s23, s10, s24
+  28:src/ssd1306/ran.h **** }
+ 1286              		.loc 2 28 53 view .LVU398
+ 1287 0266 70EEACCA 		vadd.f32	s25, s1, s25
+ 1288              	.LVL32:
+  28:src/ssd1306/ran.h **** }
+ 1289              		.loc 2 28 53 view .LVU399
+ 1290              	.LBE380:
+ 1291              	.LBE379:
+  65:src/ssd1306/graphics.c ****             t_vert.y = NEAR_CLIPPING;
+ 1292              		.loc 1 65 9 is_stmt 1 view .LVU400
+  65:src/ssd1306/graphics.c ****             t_vert.y = NEAR_CLIPPING;
+ 1293              		.loc 1 65 11 is_stmt 0 view .LVU401
+ 1294 026a F4EEC3BA 		vcmpe.f32	s23, s6
+ 1295 026e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+  66:src/ssd1306/graphics.c ****             culled_verts++;
+ 1296              		.loc 1 66 22 view .LVU402
+ 1297 0272 48BF     		it	mi
+ 1298 0274 F0EE08BA 		vmovmi.f32	s23, #3.0e+0
+ 1299              	.LVL33:
+ 1300              	.LBB381:
+ 1301              	.LBB382:
+  73:src/ssd1306/ran.h ****     return (RanVec2){p.x * depth, p.z * depth};
+ 1302              		.loc 2 73 11 view .LVU403
+ 1303 0278 81EE2BCA 		vdiv.f32	s24, s2, s23
+ 1304              	.LVL34:
+  73:src/ssd1306/ran.h ****     return (RanVec2){p.x * depth, p.z * depth};
+ 1305              		.loc 2 73 11 view .LVU404
+ 1306              	.LBE382:
+ 1307              	.LBE381:
+  67:src/ssd1306/graphics.c ****         }
+ 1308              		.loc 1 67 25 view .LVU405
+ 1309 027c 48BF     		it	mi
+ 1310 027e C1B2     		uxtbmi	r1, r0
+ 1311              	.LVL35:
+  70:src/ssd1306/graphics.c ****         p_verts[i][0] = projected_p.x * 32 + 64;
+ 1312              		.loc 1 70 9 is_stmt 1 view .LVU406
+ 1313              	.LBB386:
+ 1314              	.LBI381:
+  72:src/ssd1306/ran.h ****     float depth = fov / p.y;
+ 1315              		.loc 2 72 23 view .LVU407
+ 1316              	.LBB383:
+  73:src/ssd1306/ran.h ****     return (RanVec2){p.x * depth, p.z * depth};
+ 1317              		.loc 2 73 5 view .LVU408
+  74:src/ssd1306/ran.h **** }
+ 1318              		.loc 2 74 5 view .LVU409
+ 1319              	.LBE383:
+ARM GAS  /tmp/ccZhEbBz.s 			page 35
+
+
+ 1320              	.LBE386:
+ 1321              	.LBE392:
+  60:src/ssd1306/graphics.c ****         RanVec3 t_vert = ran_v3_scale(cube_verts[i], cube->scale);
+ 1322              		.loc 1 60 26 is_stmt 0 discriminator 1 view .LVU410
+ 1323 0280 A342     		cmp	r3, r4
+ 1324              	.LBB393:
+  72:src/ssd1306/graphics.c ****     }
+ 1325              		.loc 1 72 44 view .LVU411
+ 1326 0282 F0EE68BA 		vmov.f32	s23, s17
+ 1327              	.LVL36:
+ 1328              	.LBB387:
+ 1329              	.LBB384:
+  74:src/ssd1306/ran.h **** }
+ 1330              		.loc 2 74 39 view .LVU412
+ 1331 0286 6CEE2CCA 		vmul.f32	s25, s24, s25
+ 1332              	.LVL37:
+  74:src/ssd1306/ran.h **** }
+ 1333              		.loc 2 74 39 view .LVU413
+ 1334              	.LBE384:
+ 1335              	.LBE387:
+  71:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+ 1336              		.loc 1 71 9 is_stmt 1 view .LVU414
+ 1337              	.LBB388:
+ 1338              	.LBB385:
+  74:src/ssd1306/ran.h **** }
+ 1339              		.loc 2 74 26 is_stmt 0 view .LVU415
+ 1340 028a 2CEE07CA 		vmul.f32	s24, s24, s14
+ 1341              	.LVL38:
+  74:src/ssd1306/ran.h **** }
+ 1342              		.loc 2 74 26 view .LVU416
+ 1343              	.LBE385:
+ 1344              	.LBE388:
+  71:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+ 1345              		.loc 1 71 44 view .LVU417
+ 1346 028e B0EE497A 		vmov.f32	s14, s18
+ 1347              	.LVL39:
+  72:src/ssd1306/graphics.c ****     }
+ 1348              		.loc 1 72 44 view .LVU418
+ 1349 0292 ECEEA8BA 		vfma.f32	s23, s25, s17
+  71:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+ 1350              		.loc 1 71 44 view .LVU419
+ 1351 0296 ACEE287A 		vfma.f32	s14, s24, s17
+  72:src/ssd1306/graphics.c ****     }
+ 1352              		.loc 1 72 23 view .LVU420
+ 1353 029a FDEEEBBA 		vcvt.s32.f32	s23, s23
+  71:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+ 1354              		.loc 1 71 23 view .LVU421
+ 1355 029e BDEEC77A 		vcvt.s32.f32	s14, s14
+  72:src/ssd1306/graphics.c ****     }
+ 1356              		.loc 1 72 23 view .LVU422
+ 1357 02a2 42ED01BA 		vstr.32	s23, [r2, #-4]	@ int
+  71:src/ssd1306/graphics.c ****         p_verts[i][1] = projected_p.y * 32 + 32;
+ 1358              		.loc 1 71 23 view .LVU423
+ 1359 02a6 02ED027A 		vstr.32	s14, [r2, #-8]	@ int
+  72:src/ssd1306/graphics.c ****     }
+ 1360              		.loc 1 72 9 is_stmt 1 view .LVU424
+ 1361              	.LVL40:
+ARM GAS  /tmp/ccZhEbBz.s 			page 36
+
+
+  72:src/ssd1306/graphics.c ****     }
+ 1362              		.loc 1 72 9 is_stmt 0 view .LVU425
+ 1363              	.LBE393:
+  60:src/ssd1306/graphics.c ****         RanVec3 t_vert = ran_v3_scale(cube_verts[i], cube->scale);
+ 1364              		.loc 1 60 68 is_stmt 1 discriminator 2 view .LVU426
+  60:src/ssd1306/graphics.c ****         RanVec3 t_vert = ran_v3_scale(cube_verts[i], cube->scale);
+ 1365              		.loc 1 60 26 discriminator 1 view .LVU427
+ 1366 02aa B1D1     		bne	.L16
+ 1367              	.LBE395:
+  74:src/ssd1306/graphics.c **** 
+ 1368              		.loc 1 74 5 view .LVU428
+  74:src/ssd1306/graphics.c **** 
+ 1369              		.loc 1 74 7 is_stmt 0 view .LVU429
+ 1370 02ac 0829     		cmp	r1, #8
+  74:src/ssd1306/graphics.c **** 
+ 1371              		.loc 1 74 26 is_stmt 1 discriminator 1 view .LVU430
+  74:src/ssd1306/graphics.c **** 
+ 1372              		.loc 1 74 38 is_stmt 0 discriminator 1 view .LVU431
+ 1373 02ae 04BF     		itt	eq
+ 1374 02b0 0023     		moveq	r3, #0
+ 1375 02b2 88F80030 		strbeq	r3, [r8]
+  76:src/ssd1306/graphics.c ****     cube->rot = ran_v3_add(cube->rot, cube->ang_vel);
+ 1376              		.loc 1 76 5 is_stmt 1 view .LVU432
+  76:src/ssd1306/graphics.c ****     cube->rot = ran_v3_add(cube->rot, cube->ang_vel);
+ 1377              		.loc 1 76 17 is_stmt 0 view .LVU433
+ 1378 02b6 544B     		ldr	r3, .L34+32
+ 1379              	.LBB396:
+ 1380              	.LBB397:
+  28:src/ssd1306/ran.h **** }
+ 1381              		.loc 2 28 40 view .LVU434
+ 1382 02b8 98ED096A 		vldr.32	s12, [r8, #36]
+ 1383              	.LBE397:
+ 1384              	.LBE396:
+  76:src/ssd1306/graphics.c ****     cube->rot = ran_v3_add(cube->rot, cube->ang_vel);
+ 1385              		.loc 1 76 17 view .LVU435
+ 1386 02bc D3ED005A 		vldr.32	s11, [r3]
+ 1387              	.LBB401:
+ 1388              	.LBB398:
+  28:src/ssd1306/ran.h **** }
+ 1389              		.loc 2 28 53 view .LVU436
+ 1390 02c0 D8ED0A6A 		vldr.32	s13, [r8, #40]
+  28:src/ssd1306/ran.h **** }
+ 1391              		.loc 2 28 27 view .LVU437
+ 1392 02c4 98ED087A 		vldr.32	s14, [r8, #32]
+ 1393              	.LBE398:
+ 1394              	.LBE401:
+  82:src/ssd1306/graphics.c ****     LINE(1, 2);
+ 1395              		.loc 1 82 5 view .LVU438
+ 1396 02c8 0C9A     		ldr	r2, [sp, #48]
+ 1397 02ca 0D9B     		ldr	r3, [sp, #52]
+  76:src/ssd1306/graphics.c ****     cube->rot = ran_v3_add(cube->rot, cube->ang_vel);
+ 1398              		.loc 1 76 17 view .LVU439
+ 1399 02cc 35EE655A 		vsub.f32	s10, s10, s11
+ 1400              	.LBB402:
+ 1401              	.LBB399:
+  28:src/ssd1306/ran.h **** }
+ 1402              		.loc 2 28 40 view .LVU440
+ARM GAS  /tmp/ccZhEbBz.s 			page 37
+
+
+ 1403 02d0 79EE869A 		vadd.f32	s19, s19, s12
+ 1404              	.LVL41:
+  28:src/ssd1306/ran.h **** }
+ 1405              		.loc 2 28 53 view .LVU441
+ 1406 02d4 77EEA67A 		vadd.f32	s15, s15, s13
+ 1407              	.LVL42:
+  28:src/ssd1306/ran.h **** }
+ 1408              		.loc 2 28 27 view .LVU442
+ 1409 02d8 37EE2A7A 		vadd.f32	s14, s14, s21
+ 1410              	.LBE399:
+ 1411              	.LBE402:
+  82:src/ssd1306/graphics.c ****     LINE(1, 2);
+ 1412              		.loc 1 82 5 view .LVU443
+ 1413 02dc DDE90A01 		ldrd	r0, r1, [sp, #40]
+ 1414              	.LVL43:
+  76:src/ssd1306/graphics.c ****     cube->rot = ran_v3_add(cube->rot, cube->ang_vel);
+ 1415              		.loc 1 76 17 view .LVU444
+ 1416 02e0 88ED035A 		vstr.32	s10, [r8, #12]
+  77:src/ssd1306/graphics.c **** 
+ 1417              		.loc 1 77 5 is_stmt 1 view .LVU445
+ 1418              	.LVL44:
+ 1419              	.LBB403:
+ 1420              	.LBI396:
+  27:src/ssd1306/ran.h ****     return (RanVec3){v1.x + v2.x, v1.y + v2.y, v1.z + v2.z};
+ 1421              		.loc 2 27 23 view .LVU446
+ 1422              	.LBB400:
+  28:src/ssd1306/ran.h **** }
+ 1423              		.loc 2 28 5 view .LVU447
+  28:src/ssd1306/ran.h **** }
+ 1424              		.loc 2 28 5 is_stmt 0 view .LVU448
+ 1425              	.LBE400:
+ 1426              	.LBE403:
+  77:src/ssd1306/graphics.c **** 
+ 1427              		.loc 1 77 17 view .LVU449
+ 1428 02e4 88ED057A 		vstr.32	s14, [r8, #20]
+ 1429 02e8 C8ED077A 		vstr.32	s15, [r8, #28]
+ 1430              	.LVL45:
+  82:src/ssd1306/graphics.c ****     LINE(1, 2);
+ 1431              		.loc 1 82 5 is_stmt 1 view .LVU450
+  77:src/ssd1306/graphics.c **** 
+ 1432              		.loc 1 77 17 is_stmt 0 view .LVU451
+ 1433 02ec C8ED069A 		vstr.32	s19, [r8, #24]
+ 1434              	.LVL46:
+  82:src/ssd1306/graphics.c ****     LINE(1, 2);
+ 1435              		.loc 1 82 5 view .LVU452
+ 1436 02f0 1646     		mov	r6, r2
+ 1437 02f2 1F46     		mov	r7, r3
+ 1438 02f4 8B46     		mov	fp, r1
+ 1439 02f6 8246     		mov	r10, r0
+ 1440 02f8 FFF7FEFF 		bl	oled_draw_line
+ 1441              	.LVL47:
+  83:src/ssd1306/graphics.c ****     LINE(2, 3);
+ 1442              		.loc 1 83 5 is_stmt 1 view .LVU453
+ 1443 02fc DDE90E45 		ldrd	r4, r5, [sp, #56]
+ 1444 0300 3946     		mov	r1, r7
+ 1445 0302 2246     		mov	r2, r4
+ 1446 0304 2B46     		mov	r3, r5
+ARM GAS  /tmp/ccZhEbBz.s 			page 38
+
+
+ 1447 0306 3046     		mov	r0, r6
+ 1448 0308 0397     		str	r7, [sp, #12]
+ 1449 030a 0296     		str	r6, [sp, #8]
+ 1450 030c FFF7FEFF 		bl	oled_draw_line
+ 1451              	.LVL48:
+  84:src/ssd1306/graphics.c ****     LINE(3, 0);
+ 1452              		.loc 1 84 5 view .LVU454
+ 1453 0310 DDE91067 		ldrd	r6, r7, [sp, #64]
+ 1454 0314 2946     		mov	r1, r5
+ 1455 0316 3246     		mov	r2, r6
+ 1456 0318 3B46     		mov	r3, r7
+ 1457 031a 2046     		mov	r0, r4
+ 1458 031c 0595     		str	r5, [sp, #20]
+ 1459 031e 0494     		str	r4, [sp, #16]
+ 1460 0320 FFF7FEFF 		bl	oled_draw_line
+ 1461              	.LVL49:
+  85:src/ssd1306/graphics.c **** 
+ 1462              		.loc 1 85 5 view .LVU455
+ 1463 0324 5B46     		mov	r3, fp
+ 1464 0326 5246     		mov	r2, r10
+ 1465 0328 3946     		mov	r1, r7
+ 1466 032a 3046     		mov	r0, r6
+ 1467 032c CDF804B0 		str	fp, [sp, #4]
+ 1468 0330 CDF800A0 		str	r10, [sp]
+ 1469 0334 0797     		str	r7, [sp, #28]
+ 1470 0336 0696     		str	r6, [sp, #24]
+ 1471 0338 FFF7FEFF 		bl	oled_draw_line
+ 1472              	.LVL50:
+  87:src/ssd1306/graphics.c ****     LINE(5, 6);
+ 1473              		.loc 1 87 5 view .LVU456
+ 1474 033c DDE91445 		ldrd	r4, r5, [sp, #80]
+ 1475 0340 DDE912AB 		ldrd	r10, fp, [sp, #72]
+ 1476 0344 2246     		mov	r2, r4
+ 1477 0346 2B46     		mov	r3, r5
+ 1478 0348 5946     		mov	r1, fp
+ 1479 034a 5046     		mov	r0, r10
+ 1480 034c FFF7FEFF 		bl	oled_draw_line
+ 1481              	.LVL51:
+  88:src/ssd1306/graphics.c ****     LINE(6, 7);
+ 1482              		.loc 1 88 5 view .LVU457
+ 1483 0350 DDE91667 		ldrd	r6, r7, [sp, #88]
+ 1484 0354 2946     		mov	r1, r5
+ 1485 0356 2046     		mov	r0, r4
+ 1486 0358 3246     		mov	r2, r6
+ 1487 035a 3B46     		mov	r3, r7
+ 1488 035c 0995     		str	r5, [sp, #36]
+ 1489 035e 0894     		str	r4, [sp, #32]
+ 1490 0360 FFF7FEFF 		bl	oled_draw_line
+ 1491              	.LVL52:
+  89:src/ssd1306/graphics.c ****     LINE(7, 4);
+ 1492              		.loc 1 89 5 view .LVU458
+ 1493 0364 DDE91845 		ldrd	r4, r5, [sp, #96]
+ 1494 0368 3946     		mov	r1, r7
+ 1495 036a 2246     		mov	r2, r4
+ 1496 036c 2B46     		mov	r3, r5
+ 1497 036e 3046     		mov	r0, r6
+ 1498 0370 FFF7FEFF 		bl	oled_draw_line
+ARM GAS  /tmp/ccZhEbBz.s 			page 39
+
+
+ 1499              	.LVL53:
+  90:src/ssd1306/graphics.c **** 
+ 1500              		.loc 1 90 5 view .LVU459
+ 1501 0374 5B46     		mov	r3, fp
+ 1502 0376 5246     		mov	r2, r10
+ 1503 0378 2946     		mov	r1, r5
+ 1504 037a 2046     		mov	r0, r4
+ 1505 037c FFF7FEFF 		bl	oled_draw_line
+ 1506              	.LVL54:
+  92:src/ssd1306/graphics.c ****     LINE(1, 5);
+ 1507              		.loc 1 92 5 view .LVU460
+ 1508 0380 DDE90001 		ldrd	r0, r1, [sp]
+ 1509 0384 5B46     		mov	r3, fp
+ 1510 0386 5246     		mov	r2, r10
+ 1511 0388 FFF7FEFF 		bl	oled_draw_line
+ 1512              	.LVL55:
+  93:src/ssd1306/graphics.c ****     LINE(2, 6);
+ 1513              		.loc 1 93 5 view .LVU461
+ 1514 038c DDE90823 		ldrd	r2, r3, [sp, #32]
+ 1515 0390 DDE90201 		ldrd	r0, r1, [sp, #8]
+ 1516 0394 FFF7FEFF 		bl	oled_draw_line
+ 1517              	.LVL56:
+  94:src/ssd1306/graphics.c ****     LINE(3, 7);
+ 1518              		.loc 1 94 5 view .LVU462
+ 1519 0398 DDE90401 		ldrd	r0, r1, [sp, #16]
+ 1520 039c 3B46     		mov	r3, r7
+ 1521 039e 3246     		mov	r2, r6
+ 1522 03a0 FFF7FEFF 		bl	oled_draw_line
+ 1523              	.LVL57:
+  95:src/ssd1306/graphics.c **** #undef LINE
+ 1524              		.loc 1 95 5 view .LVU463
+ 1525 03a4 DDE90601 		ldrd	r0, r1, [sp, #24]
+ 1526 03a8 2B46     		mov	r3, r5
+ 1527 03aa 2246     		mov	r2, r4
+ 1528 03ac FFF7FEFF 		bl	oled_draw_line
+ 1529              	.LVL58:
+ 1530              	.L13:
+  95:src/ssd1306/graphics.c **** #undef LINE
+ 1531              		.loc 1 95 5 is_stmt 0 view .LVU464
+ 1532              	.LBE405:
+ 1533              	.LBE407:
+ 146:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 1534              		.loc 1 146 42 is_stmt 1 discriminator 3 view .LVU465
+ 146:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 1535              		.loc 1 146 26 discriminator 1 view .LVU466
+ 1536 03b0 1B4B     		ldr	r3, .L34+56
+ 1537 03b2 08F12C08 		add	r8, r8, #44
+ 1538              	.LVL59:
+ 146:src/ssd1306/graphics.c ****         cube_list[i].scale = value + 0.3f;
+ 1539              		.loc 1 146 26 is_stmt 0 discriminator 1 view .LVU467
+ 1540 03b6 9845     		cmp	r8, r3
+ 1541 03b8 7FF4CBAE 		bne	.L18
+ 1542              	.LBE411:
+ 151:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 64, 128, 64 - line_offset);
+ 1543              		.loc 1 151 5 is_stmt 1 view .LVU468
+ 151:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 64, 128, 64 - line_offset);
+ 1544              		.loc 1 151 28 is_stmt 0 view .LVU469
+ARM GAS  /tmp/ccZhEbBz.s 			page 40
+
+
+ 1545 03bc 9FED197A 		vldr.32	s14, .L34+60
+ 1546 03c0 F0EE087A 		vmov.f32	s15, #3.0e+0
+ 1547 03c4 EBEE077A 		vfma.f32	s15, s22, s14
+ 1548              	.LVL60:
+ 152:src/ssd1306/graphics.c ****     oled_draw_line(line_offset, 64, 0, 64 - line_offset);
+ 1549              		.loc 1 152 5 is_stmt 1 view .LVU470
+ 1550 03c8 8022     		movs	r2, #128
+ 1551 03ca 4021     		movs	r1, #64
+ 151:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 64, 128, 64 - line_offset);
+ 1552              		.loc 1 151 12 is_stmt 0 view .LVU471
+ 1553 03cc FDEEE77A 		vcvt.s32.f32	s15, s15
+ 1554              	.LVL61:
+ 151:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 64, 128, 64 - line_offset);
+ 1555              		.loc 1 151 12 view .LVU472
+ 1556 03d0 CDED007A 		vstr.32	s15, [sp]	@ int
+ 152:src/ssd1306/graphics.c ****     oled_draw_line(line_offset, 64, 0, 64 - line_offset);
+ 1557              		.loc 1 152 5 view .LVU473
+ 1558 03d4 9DF90040 		ldrsb	r4, [sp]
+ 1559 03d8 C4F18005 		rsb	r5, r4, #128
+ 1560 03dc C4F14006 		rsb	r6, r4, #64
+ 1561 03e0 3346     		mov	r3, r6
+ 1562 03e2 2846     		mov	r0, r5
+ 1563 03e4 26E0     		b	.L35
+ 1564              	.L36:
+ 1565 03e6 00BF     		.align	2
+ 1566              	.L34:
+ 1567 03e8 00000000 		.word	avg_audio_cursor
+ 1568 03ec 00000000 		.word	avg_audio
+ 1569 03f0 00000000 		.word	0
+ 1570 03f4 9A99993E 		.word	1050253722
+ 1571 03f8 CDCC4C3F 		.word	1061997773
+ 1572 03fc 0000803D 		.word	1031798784
+ 1573 0400 295C0F3E 		.word	1041194025
+ 1574 0404 66660640 		.word	1074161254
+ 1575 0408 00000000 		.word	cube_speed
+ 1576 040c 00000000 		.word	camera_fov
+ 1577 0410 54EF2244 		.word	1143140180
+ 1578 0414 00000042 		.word	1107296256
+ 1579 0418 00008042 		.word	1115684864
+ 1580 041c 00000000 		.word	cube_verts
+ 1581 0420 98080000 		.word	cube_list+2200
+ 1582 0424 00000442 		.word	1107558400
+ 1583 0428 00000000 		.word	tick.0
+ 1584 042c 00000000 		.word	sine_table
+ 1585 0430 00000000 		.word	cube_list
+ 1586              	.L35:
+ 1587 0434 FFF7FEFF 		bl	oled_draw_line
+ 1588              	.LVL62:
+ 153:src/ssd1306/graphics.c ****     oled_draw_line(128 - line_offset, 0, 128, line_offset);
+ 1589              		.loc 1 153 5 is_stmt 1 view .LVU474
+ 1590 0438 2046     		mov	r0, r4
+ 1591 043a 3346     		mov	r3, r6
+ 1592 043c 0022     		movs	r2, #0
+ 1593 043e 4021     		movs	r1, #64
+ 1594 0440 FFF7FEFF 		bl	oled_draw_line
+ 1595              	.LVL63:
+ 154:src/ssd1306/graphics.c ****     oled_draw_line(line_offset, 0, 0, line_offset);
+ARM GAS  /tmp/ccZhEbBz.s 			page 41
+
+
+ 1596              		.loc 1 154 5 view .LVU475
+ 1597 0444 2346     		mov	r3, r4
+ 1598 0446 2846     		mov	r0, r5
+ 1599 0448 8022     		movs	r2, #128
+ 1600 044a 0021     		movs	r1, #0
+ 1601 044c FFF7FEFF 		bl	oled_draw_line
+ 1602              	.LVL64:
+ 155:src/ssd1306/graphics.c **** 
+ 1603              		.loc 1 155 5 view .LVU476
+ 1604 0450 2346     		mov	r3, r4
+ 1605 0452 2046     		mov	r0, r4
+ 1606 0454 0022     		movs	r2, #0
+ 158:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 1607              		.loc 1 158 27 is_stmt 0 view .LVU477
+ 1608 0456 E44C     		ldr	r4, .L37+8
+ 155:src/ssd1306/graphics.c **** 
+ 1609              		.loc 1 155 5 view .LVU478
+ 1610 0458 1146     		mov	r1, r2
+ 1611 045a FFF7FEFF 		bl	oled_draw_line
+ 1612              	.LVL65:
+ 157:src/ssd1306/graphics.c ****     float rot_ang = 0.002f*tick;
+ 1613              		.loc 1 157 5 is_stmt 1 view .LVU479
+ 158:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 1614              		.loc 1 158 5 view .LVU480
+ 159:src/ssd1306/graphics.c ****     RanVec2 S = {-R.y, R.x};
+ 1615              		.loc 1 159 5 view .LVU481
+ 1616              	.LBB412:
+ 1617              	.LBI412:
+  50:src/ssd1306/ran.h ****     return sine_table[((int)(x * (4095 / 2.0f / RAN_PI)) + 1024) & 0xfff];
+ 1618              		.loc 2 50 21 view .LVU482
+ 1619              	.LBB413:
+  51:src/ssd1306/ran.h **** }
+ 1620              		.loc 2 51 5 view .LVU483
+ 1621              	.LBE413:
+ 1622              	.LBE412:
+ 158:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 1623              		.loc 1 158 27 is_stmt 0 view .LVU484
+ 1624 045e D4ED007A 		vldr.32	s15, [r4]	@ int
+ 158:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 1625              		.loc 1 158 11 view .LVU485
+ 1626 0462 9FEDE26A 		vldr.32	s12, .L37+12
+ 159:src/ssd1306/graphics.c ****     RanVec2 S = {-R.y, R.x};
+ 1627              		.loc 1 159 18 view .LVU486
+ 1628 0466 DFEDE26A 		vldr.32	s13, .L37+16
+ 1629              	.LBB417:
+ 1630              	.LBB414:
+  51:src/ssd1306/ran.h **** }
+ 1631              		.loc 2 51 32 view .LVU487
+ 1632 046a 9FEDE27A 		vldr.32	s14, .L37+20
+ 1633              	.LBE414:
+ 1634              	.LBE417:
+ 1635              	.LBB418:
+ 1636              	.LBB419:
+ 169:src/ssd1306/graphics.c ****         room_verts_ss[i][0] = room_vert_p.x * 32 + 64;
+ 1637              		.loc 1 169 31 view .LVU488
+ 1638 046e E24B     		ldr	r3, .L37+24
+ 1639 0470 E249     		ldr	r1, .L37+28
+ARM GAS  /tmp/ccZhEbBz.s 			page 42
+
+
+ 1640 0472 93ED003A 		vldr.32	s6, [r3]
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1641              		.loc 1 170 50 view .LVU489
+ 1642 0476 DFEDE23A 		vldr.32	s7, .L37+32
+ 1643              	.LBE419:
+ 1644              	.LBE418:
+ 158:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 1645              		.loc 1 158 27 view .LVU490
+ 1646 047a F8EE677A 		vcvt.f32.u32	s15, s15
+ 1647 047e 0AAA     		add	r2, sp, #40
+ 158:src/ssd1306/graphics.c ****     RanVec2 R = {ran_fast_cos(rot_ang * RAN_PI), ran_fast_sin(rot_ang * RAN_PI)};
+ 1648              		.loc 1 158 11 view .LVU491
+ 1649 0480 67EE867A 		vmul.f32	s15, s15, s12
+ 1650              	.LVL66:
+ 1651              	.LBB437:
+ 1652              	.LBB434:
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1653              		.loc 1 170 50 view .LVU492
+ 1654 0484 9FEDDF6A 		vldr.32	s12, .L37+36
+ 1655              	.LBE434:
+ 1656              	.LBE437:
+ 159:src/ssd1306/graphics.c ****     RanVec2 S = {-R.y, R.x};
+ 1657              		.loc 1 159 18 view .LVU493
+ 1658 0488 67EEA67A 		vmul.f32	s15, s15, s13
+ 1659              	.LVL67:
+ 1660              	.LBB438:
+ 1661              	.LBB415:
+  51:src/ssd1306/ran.h **** }
+ 1662              		.loc 2 51 32 view .LVU494
+ 1663 048c 67EE877A 		vmul.f32	s15, s15, s14
+ 1664              	.LVL68:
+  51:src/ssd1306/ran.h **** }
+ 1665              		.loc 2 51 24 view .LVU495
+ 1666 0490 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 1667 0494 17EE903A 		vmov	r3, s15	@ int
+  51:src/ssd1306/ran.h **** }
+ 1668              		.loc 2 51 58 view .LVU496
+ 1669 0498 03F58060 		add	r0, r3, #1024
+ 1670              	.LBE415:
+ 1671              	.LBE438:
+ 1672              	.LBB439:
+ 1673              	.LBB440:
+  48:src/ssd1306/ran.h **** }
+ 1674              		.loc 2 48 57 view .LVU497
+ 1675 049c C3F30B03 		ubfx	r3, r3, #0, #12
+  48:src/ssd1306/ran.h **** }
+ 1676              		.loc 2 48 22 view .LVU498
+ 1677 04a0 09EB8303 		add	r3, r9, r3, lsl #2
+ 1678 04a4 D3ED004A 		vldr.32	s9, [r3]
+ 1679              	.LBE440:
+ 1680              	.LBE439:
+ 1681              	.LBB442:
+ 1682              	.LBB416:
+  51:src/ssd1306/ran.h **** }
+ 1683              		.loc 2 51 66 view .LVU499
+ 1684 04a8 C0F30B00 		ubfx	r0, r0, #0, #12
+  51:src/ssd1306/ran.h **** }
+ARM GAS  /tmp/ccZhEbBz.s 			page 43
+
+
+ 1685              		.loc 2 51 22 view .LVU500
+ 1686 04ac 09EB8003 		add	r3, r9, r0, lsl #2
+ 1687 04b0 93ED005A 		vldr.32	s10, [r3]
+ 1688              	.LVL69:
+  51:src/ssd1306/ran.h **** }
+ 1689              		.loc 2 51 22 view .LVU501
+ 1690              	.LBE416:
+ 1691              	.LBE442:
+ 1692              	.LBB443:
+ 1693              	.LBI439:
+  47:src/ssd1306/ran.h ****     return sine_table[(int)(x * (4095 / 2.0f / RAN_PI)) & 0xfff];
+ 1694              		.loc 2 47 21 is_stmt 1 view .LVU502
+ 1695              	.LBB441:
+  48:src/ssd1306/ran.h **** }
+ 1696              		.loc 2 48 5 view .LVU503
+  48:src/ssd1306/ran.h **** }
+ 1697              		.loc 2 48 5 is_stmt 0 view .LVU504
+ 1698              	.LBE441:
+ 1699              	.LBE443:
+ 160:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != ROOM_SIDES * 2; i++){
+ 1700              		.loc 1 160 5 is_stmt 1 view .LVU505
+ 160:src/ssd1306/graphics.c ****     for(uint8_t i = 0; i != ROOM_SIDES * 2; i++){
+ 1701              		.loc 1 160 18 is_stmt 0 view .LVU506
+ 1702 04b4 B1EE644A 		vneg.f32	s8, s9
+ 1703              	.LVL70:
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1704              		.loc 1 161 5 is_stmt 1 view .LVU507
+ 1705              	.LBB444:
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1706              		.loc 1 161 9 view .LVU508
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1707              		.loc 1 161 26 discriminator 1 view .LVU509
+ 1708 04b8 01F1C003 		add	r3, r1, #192
+ 1709              	.LVL71:
+ 1710              	.L19:
+ 1711              	.LBB435:
+ 162:src/ssd1306/graphics.c ****         p = (RanVec3){
+ 1712              		.loc 1 162 9 view .LVU510
+ 162:src/ssd1306/graphics.c ****         p = (RanVec3){
+ 1713              		.loc 1 162 17 is_stmt 0 view .LVU511
+ 1714 04bc 91ED017A 		vldr.32	s14, [r1, #4]
+ 1715 04c0 D1ED027A 		vldr.32	s15, [r1, #8]
+ 1716 04c4 D1ED005A 		vldr.32	s11, [r1]
+ 1717              	.LVL72:
+ 163:src/ssd1306/graphics.c ****             ran_v2_dot((RanVec2){p.x, p.z}, R),
+ 1718              		.loc 1 163 9 is_stmt 1 view .LVU512
+ 1719              	.LBB420:
+ 1720              	.LBI420:
+  23:src/ssd1306/ran.h ****     return v1.x * v2.x + v1.y * v2.y;
+ 1721              		.loc 2 23 21 view .LVU513
+ 1722              	.LBB421:
+  24:src/ssd1306/ran.h **** }
+ 1723              		.loc 2 24 5 view .LVU514
+ 1724              	.LBE421:
+ 1725              	.LBE420:
+ 1726              	.LBB424:
+ 1727              	.LBB425:
+ARM GAS  /tmp/ccZhEbBz.s 			page 44
+
+
+  73:src/ssd1306/ran.h ****     return (RanVec2){p.x * depth, p.z * depth};
+ 1728              		.loc 2 73 11 is_stmt 0 view .LVU515
+ 1729 04c8 C3EE076A 		vdiv.f32	s13, s6, s14
+ 1730              	.LBE425:
+ 1731              	.LBE424:
+ 1732              	.LBE435:
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1733              		.loc 1 161 26 discriminator 1 view .LVU516
+ 1734 04cc 0C31     		adds	r1, r1, #12
+ 1735              	.LVL73:
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1736              		.loc 1 161 26 discriminator 1 view .LVU517
+ 1737 04ce 0832     		adds	r2, r2, #8
+ 1738 04d0 8B42     		cmp	r3, r1
+ 1739              	.LBB436:
+ 1740              	.LBB427:
+ 1741              	.LBB422:
+  24:src/ssd1306/ran.h **** }
+ 1742              		.loc 2 24 31 view .LVU518
+ 1743 04d2 24EEA77A 		vmul.f32	s14, s9, s15
+ 1744              	.LVL74:
+  24:src/ssd1306/ran.h **** }
+ 1745              		.loc 2 24 31 view .LVU519
+ 1746              	.LBE422:
+ 1747              	.LBE427:
+ 1748              	.LBB428:
+ 1749              	.LBB429:
+ 1750 04d6 65EE277A 		vmul.f32	s15, s10, s15
+ 1751              	.LVL75:
+  24:src/ssd1306/ran.h **** }
+ 1752              		.loc 2 24 31 view .LVU520
+ 1753              	.LBE429:
+ 1754              	.LBE428:
+ 1755              	.LBB431:
+ 1756              	.LBB423:
+  24:src/ssd1306/ran.h **** }
+ 1757              		.loc 2 24 24 view .LVU521
+ 1758 04da A5EE257A 		vfma.f32	s14, s10, s11
+ 1759              	.LVL76:
+  24:src/ssd1306/ran.h **** }
+ 1760              		.loc 2 24 24 view .LVU522
+ 1761              	.LBE423:
+ 1762              	.LBE431:
+ 1763              	.LBB432:
+ 1764              	.LBI428:
+  23:src/ssd1306/ran.h ****     return v1.x * v2.x + v1.y * v2.y;
+ 1765              		.loc 2 23 21 is_stmt 1 view .LVU523
+ 1766              	.LBB430:
+  24:src/ssd1306/ran.h **** }
+ 1767              		.loc 2 24 5 view .LVU524
+  24:src/ssd1306/ran.h **** }
+ 1768              		.loc 2 24 24 is_stmt 0 view .LVU525
+ 1769 04de E4EE257A 		vfma.f32	s15, s8, s11
+ 1770              	.LVL77:
+  24:src/ssd1306/ran.h **** }
+ 1771              		.loc 2 24 24 view .LVU526
+ 1772              	.LBE430:
+ARM GAS  /tmp/ccZhEbBz.s 			page 45
+
+
+ 1773              	.LBE432:
+ 169:src/ssd1306/graphics.c ****         room_verts_ss[i][0] = room_vert_p.x * 32 + 64;
+ 1774              		.loc 1 169 9 is_stmt 1 view .LVU527
+ 1775              	.LBB433:
+ 1776              	.LBI424:
+  72:src/ssd1306/ran.h ****     float depth = fov / p.y;
+ 1777              		.loc 2 72 23 view .LVU528
+ 1778              	.LBB426:
+  73:src/ssd1306/ran.h ****     return (RanVec2){p.x * depth, p.z * depth};
+ 1779              		.loc 2 73 5 view .LVU529
+  74:src/ssd1306/ran.h **** }
+ 1780              		.loc 2 74 5 view .LVU530
+  74:src/ssd1306/ran.h **** }
+ 1781              		.loc 2 74 26 is_stmt 0 view .LVU531
+ 1782 04e2 27EE267A 		vmul.f32	s14, s14, s13
+ 1783              	.LVL78:
+  74:src/ssd1306/ran.h **** }
+ 1784              		.loc 2 74 39 view .LVU532
+ 1785 04e6 67EEA67A 		vmul.f32	s15, s15, s13
+ 1786              	.LVL79:
+  74:src/ssd1306/ran.h **** }
+ 1787              		.loc 2 74 39 view .LVU533
+ 1788              	.LBE426:
+ 1789              	.LBE433:
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1790              		.loc 1 170 9 is_stmt 1 view .LVU534
+ 171:src/ssd1306/graphics.c ****     }
+ 1791              		.loc 1 171 50 is_stmt 0 view .LVU535
+ 1792 04ea F0EE466A 		vmov.f32	s13, s12
+ 1793 04ee E7EE866A 		vfma.f32	s13, s15, s12
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1794              		.loc 1 170 50 view .LVU536
+ 1795 04f2 F0EE637A 		vmov.f32	s15, s7
+ 1796              	.LVL80:
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1797              		.loc 1 170 50 view .LVU537
+ 1798 04f6 E7EE067A 		vfma.f32	s15, s14, s12
+ 171:src/ssd1306/graphics.c ****     }
+ 1799              		.loc 1 171 29 view .LVU538
+ 1800 04fa FDEEE66A 		vcvt.s32.f32	s13, s13
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1801              		.loc 1 170 29 view .LVU539
+ 1802 04fe FDEEE77A 		vcvt.s32.f32	s15, s15
+ 171:src/ssd1306/graphics.c ****     }
+ 1803              		.loc 1 171 29 view .LVU540
+ 1804 0502 42ED016A 		vstr.32	s13, [r2, #-4]	@ int
+ 170:src/ssd1306/graphics.c ****         room_verts_ss[i][1] = room_vert_p.y * 32 + 32;
+ 1805              		.loc 1 170 29 view .LVU541
+ 1806 0506 42ED027A 		vstr.32	s15, [r2, #-8]	@ int
+ 171:src/ssd1306/graphics.c ****     }
+ 1807              		.loc 1 171 9 is_stmt 1 view .LVU542
+ 1808              	.LVL81:
+ 171:src/ssd1306/graphics.c ****     }
+ 1809              		.loc 1 171 9 is_stmt 0 view .LVU543
+ 1810              	.LBE436:
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1811              		.loc 1 161 46 is_stmt 1 discriminator 3 view .LVU544
+ARM GAS  /tmp/ccZhEbBz.s 			page 46
+
+
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1812              		.loc 1 161 26 discriminator 1 view .LVU545
+ 1813 050a D7D1     		bne	.L19
+ 1814              	.LVL82:
+ 161:src/ssd1306/graphics.c ****         RanVec3 p = room_verts[i];
+ 1815              		.loc 1 161 26 is_stmt 0 discriminator 1 view .LVU546
+ 1816              	.LBE444:
+ 1817              	.LBB445:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1818              		.loc 1 177 5 is_stmt 1 discriminator 1 view .LVU547
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1819              		.loc 1 178 9 view .LVU548
+ 1820 050c DDE90C89 		ldrd	r8, r9, [sp, #48]
+ 1821              	.LVL83:
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1822              		.loc 1 178 9 is_stmt 0 view .LVU549
+ 1823 0510 0B9B     		ldr	r3, [sp, #44]
+ 1824 0512 0A98     		ldr	r0, [sp, #40]
+ 1825 0514 1F46     		mov	r7, r3
+ 1826 0516 4246     		mov	r2, r8
+ 1827 0518 4B46     		mov	r3, r9
+ 1828 051a 3946     		mov	r1, r7
+ 1829 051c 0646     		mov	r6, r0
+ 1830 051e FFF7FEFF 		bl	oled_draw_line_dotted
+ 1831              	.LVL84:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1832              		.loc 1 179 9 is_stmt 1 view .LVU550
+ 1833 0522 DDE91A25 		ldrd	r2, r5, [sp, #104]
+ 1834 0526 3946     		mov	r1, r7
+ 1835 0528 2B46     		mov	r3, r5
+ 1836 052a 3046     		mov	r0, r6
+ 1837 052c 9246     		mov	r10, r2
+ 1838 052e 0197     		str	r7, [sp, #4]
+ 1839 0530 0096     		str	r6, [sp]
+ 1840 0532 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1841              	.LVL85:
+ 180:src/ssd1306/graphics.c ****     }
+ 1842              		.loc 1 180 9 view .LVU551
+ 1843 0536 DDE91C67 		ldrd	r6, r7, [sp, #112]
+ 1844 053a 2946     		mov	r1, r5
+ 1845 053c 3246     		mov	r2, r6
+ 1846 053e 3B46     		mov	r3, r7
+ 1847 0540 5046     		mov	r0, r10
+ 1848 0542 CDF808A0 		str	r10, [sp, #8]
+ 1849 0546 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1850              	.LVL86:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1851              		.loc 1 177 42 discriminator 3 view .LVU552
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1852              		.loc 1 177 5 discriminator 1 view .LVU553
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1853              		.loc 1 178 9 view .LVU554
+ 1854 054a DDE90EAB 		ldrd	r10, fp, [sp, #56]
+ 1855 054e 4946     		mov	r1, r9
+ 1856 0550 5246     		mov	r2, r10
+ 1857 0552 5B46     		mov	r3, fp
+ 1858 0554 4046     		mov	r0, r8
+ARM GAS  /tmp/ccZhEbBz.s 			page 47
+
+
+ 1859 0556 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1860              	.LVL87:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1861              		.loc 1 179 9 view .LVU555
+ 1862 055a 3B46     		mov	r3, r7
+ 1863 055c 3246     		mov	r2, r6
+ 1864 055e 4946     		mov	r1, r9
+ 1865 0560 4046     		mov	r0, r8
+ 1866 0562 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1867              	.LVL88:
+ 180:src/ssd1306/graphics.c ****     }
+ 1868              		.loc 1 180 9 view .LVU556
+ 1869 0566 3946     		mov	r1, r7
+ 1870 0568 3046     		mov	r0, r6
+ 1871 056a DDE91E67 		ldrd	r6, r7, [sp, #120]
+ 1872 056e 3246     		mov	r2, r6
+ 1873 0570 3B46     		mov	r3, r7
+ 1874 0572 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1875              	.LVL89:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1876              		.loc 1 177 42 discriminator 3 view .LVU557
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1877              		.loc 1 177 5 discriminator 1 view .LVU558
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1878              		.loc 1 178 9 view .LVU559
+ 1879 0576 DDE91089 		ldrd	r8, r9, [sp, #64]
+ 1880 057a 5946     		mov	r1, fp
+ 1881 057c 4246     		mov	r2, r8
+ 1882 057e 4B46     		mov	r3, r9
+ 1883 0580 5046     		mov	r0, r10
+ 1884 0582 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1885              	.LVL90:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1886              		.loc 1 179 9 view .LVU560
+ 1887 0586 3B46     		mov	r3, r7
+ 1888 0588 3246     		mov	r2, r6
+ 1889 058a 5946     		mov	r1, fp
+ 1890 058c 5046     		mov	r0, r10
+ 1891 058e FFF7FEFF 		bl	oled_draw_line_dotted
+ 1892              	.LVL91:
+ 180:src/ssd1306/graphics.c ****     }
+ 1893              		.loc 1 180 9 view .LVU561
+ 1894 0592 3946     		mov	r1, r7
+ 1895 0594 3046     		mov	r0, r6
+ 1896 0596 DDE92067 		ldrd	r6, r7, [sp, #128]
+ 1897 059a 3246     		mov	r2, r6
+ 1898 059c 3B46     		mov	r3, r7
+ 1899 059e FFF7FEFF 		bl	oled_draw_line_dotted
+ 1900              	.LVL92:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1901              		.loc 1 177 42 discriminator 3 view .LVU562
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1902              		.loc 1 177 5 discriminator 1 view .LVU563
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1903              		.loc 1 178 9 view .LVU564
+ 1904 05a2 DDE912AB 		ldrd	r10, fp, [sp, #72]
+ 1905 05a6 4946     		mov	r1, r9
+ARM GAS  /tmp/ccZhEbBz.s 			page 48
+
+
+ 1906 05a8 5246     		mov	r2, r10
+ 1907 05aa 5B46     		mov	r3, fp
+ 1908 05ac 4046     		mov	r0, r8
+ 1909 05ae FFF7FEFF 		bl	oled_draw_line_dotted
+ 1910              	.LVL93:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1911              		.loc 1 179 9 view .LVU565
+ 1912 05b2 3B46     		mov	r3, r7
+ 1913 05b4 3246     		mov	r2, r6
+ 1914 05b6 4946     		mov	r1, r9
+ 1915 05b8 4046     		mov	r0, r8
+ 1916 05ba FFF7FEFF 		bl	oled_draw_line_dotted
+ 1917              	.LVL94:
+ 180:src/ssd1306/graphics.c ****     }
+ 1918              		.loc 1 180 9 view .LVU566
+ 1919 05be 3946     		mov	r1, r7
+ 1920 05c0 3046     		mov	r0, r6
+ 1921 05c2 DDE92267 		ldrd	r6, r7, [sp, #136]
+ 1922 05c6 3246     		mov	r2, r6
+ 1923 05c8 3B46     		mov	r3, r7
+ 1924 05ca FFF7FEFF 		bl	oled_draw_line_dotted
+ 1925              	.LVL95:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1926              		.loc 1 177 42 discriminator 3 view .LVU567
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1927              		.loc 1 177 5 discriminator 1 view .LVU568
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1928              		.loc 1 178 9 view .LVU569
+ 1929 05ce DDE91489 		ldrd	r8, r9, [sp, #80]
+ 1930 05d2 5946     		mov	r1, fp
+ 1931 05d4 4246     		mov	r2, r8
+ 1932 05d6 4B46     		mov	r3, r9
+ 1933 05d8 5046     		mov	r0, r10
+ 1934 05da FFF7FEFF 		bl	oled_draw_line_dotted
+ 1935              	.LVL96:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1936              		.loc 1 179 9 view .LVU570
+ 1937 05de 3B46     		mov	r3, r7
+ 1938 05e0 3246     		mov	r2, r6
+ 1939 05e2 5946     		mov	r1, fp
+ 1940 05e4 5046     		mov	r0, r10
+ 1941 05e6 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1942              	.LVL97:
+ 180:src/ssd1306/graphics.c ****     }
+ 1943              		.loc 1 180 9 view .LVU571
+ 1944 05ea 3946     		mov	r1, r7
+ 1945 05ec 3046     		mov	r0, r6
+ 1946 05ee DDE92467 		ldrd	r6, r7, [sp, #144]
+ 1947 05f2 3246     		mov	r2, r6
+ 1948 05f4 3B46     		mov	r3, r7
+ 1949 05f6 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1950              	.LVL98:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1951              		.loc 1 177 42 discriminator 3 view .LVU572
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1952              		.loc 1 177 5 discriminator 1 view .LVU573
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ARM GAS  /tmp/ccZhEbBz.s 			page 49
+
+
+ 1953              		.loc 1 178 9 view .LVU574
+ 1954 05fa DDE916AB 		ldrd	r10, fp, [sp, #88]
+ 1955 05fe 4946     		mov	r1, r9
+ 1956 0600 5246     		mov	r2, r10
+ 1957 0602 5B46     		mov	r3, fp
+ 1958 0604 4046     		mov	r0, r8
+ 1959 0606 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1960              	.LVL99:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1961              		.loc 1 179 9 view .LVU575
+ 1962 060a 3B46     		mov	r3, r7
+ 1963 060c 3246     		mov	r2, r6
+ 1964 060e 4946     		mov	r1, r9
+ 1965 0610 4046     		mov	r0, r8
+ 1966 0612 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1967              	.LVL100:
+ 180:src/ssd1306/graphics.c ****     }
+ 1968              		.loc 1 180 9 view .LVU576
+ 1969 0616 DDE92689 		ldrd	r8, r9, [sp, #152]
+ 1970 061a 3946     		mov	r1, r7
+ 1971 061c 3046     		mov	r0, r6
+ 1972 061e 4246     		mov	r2, r8
+ 1973 0620 4B46     		mov	r3, r9
+ 1974 0622 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1975              	.LVL101:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1976              		.loc 1 177 42 discriminator 3 view .LVU577
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 1977              		.loc 1 177 5 discriminator 1 view .LVU578
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 1978              		.loc 1 178 9 view .LVU579
+ 1979 0626 DDE91867 		ldrd	r6, r7, [sp, #96]
+ 1980 062a 5946     		mov	r1, fp
+ 1981 062c 3246     		mov	r2, r6
+ 1982 062e 3B46     		mov	r3, r7
+ 1983 0630 5046     		mov	r0, r10
+ 1984 0632 FFF7FEFF 		bl	oled_draw_line_dotted
+ 1985              	.LVL102:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 1986              		.loc 1 179 9 view .LVU580
+ 1987 0636 4B46     		mov	r3, r9
+ 1988 0638 4246     		mov	r2, r8
+ 1989 063a 5946     		mov	r1, fp
+ 1990 063c 5046     		mov	r0, r10
+ 1991 063e FFF7FEFF 		bl	oled_draw_line_dotted
+ 1992              	.LVL103:
+ 180:src/ssd1306/graphics.c ****     }
+ 1993              		.loc 1 180 9 view .LVU581
+ 1994 0642 4946     		mov	r1, r9
+ 1995 0644 4046     		mov	r0, r8
+ 1996 0646 DDE92889 		ldrd	r8, r9, [sp, #160]
+ 1997 064a 4246     		mov	r2, r8
+ 1998 064c 4B46     		mov	r3, r9
+ 1999 064e FFF7FEFF 		bl	oled_draw_line_dotted
+ 2000              	.LVL104:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 2001              		.loc 1 177 42 discriminator 3 view .LVU582
+ARM GAS  /tmp/ccZhEbBz.s 			page 50
+
+
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 2002              		.loc 1 177 5 discriminator 1 view .LVU583
+ 178:src/ssd1306/graphics.c ****         LINE(i, i + ROOM_SIDES);
+ 2003              		.loc 1 178 9 view .LVU584
+ 2004 0652 DDE90023 		ldrd	r2, r3, [sp]
+ 2005 0656 3946     		mov	r1, r7
+ 2006 0658 3046     		mov	r0, r6
+ 2007 065a FFF7FEFF 		bl	oled_draw_line_dotted
+ 2008              	.LVL105:
+ 179:src/ssd1306/graphics.c ****         LINE(i + ROOM_SIDES, (i + 1) % ROOM_SIDES + ROOM_SIDES);
+ 2009              		.loc 1 179 9 view .LVU585
+ 2010 065e 4B46     		mov	r3, r9
+ 2011 0660 4246     		mov	r2, r8
+ 2012 0662 3946     		mov	r1, r7
+ 2013 0664 3046     		mov	r0, r6
+ 2014 0666 FFF7FEFF 		bl	oled_draw_line_dotted
+ 2015              	.LVL106:
+ 180:src/ssd1306/graphics.c ****     }
+ 2016              		.loc 1 180 9 view .LVU586
+ 2017 066a 029A     		ldr	r2, [sp, #8]
+ 2018 066c 2B46     		mov	r3, r5
+ 2019 066e 4946     		mov	r1, r9
+ 2020 0670 4046     		mov	r0, r8
+ 2021 0672 FFF7FEFF 		bl	oled_draw_line_dotted
+ 2022              	.LVL107:
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 2023              		.loc 1 177 42 discriminator 3 view .LVU587
+ 177:src/ssd1306/graphics.c ****         LINE(i, (i + 1) % ROOM_SIDES);
+ 2024              		.loc 1 177 5 discriminator 1 view .LVU588
+ 2025              	.LBE445:
+ 184:src/ssd1306/graphics.c ****     tick++;
+ 2026              		.loc 1 184 5 view .LVU589
+ 2027 0676 FFF7FEFF 		bl	oled_show
+ 2028              	.LVL108:
+ 185:src/ssd1306/graphics.c **** }
+ 2029              		.loc 1 185 5 view .LVU590
+ 185:src/ssd1306/graphics.c **** }
+ 2030              		.loc 1 185 9 is_stmt 0 view .LVU591
+ 2031 067a 2368     		ldr	r3, [r4]
+ 2032 067c 0133     		adds	r3, r3, #1
+ 2033 067e 2360     		str	r3, [r4]
+ 2034              	.LVL109:
+ 185:src/ssd1306/graphics.c **** }
+ 2035              		.loc 1 185 9 view .LVU592
+ 2036              	.LBE215:
+ 2037              	.LBE214:
+ 192:src/ssd1306/graphics.c ****     }
+ 2038              		.loc 1 192 9 is_stmt 1 view .LVU593
+ 192:src/ssd1306/graphics.c ****     }
+ 2039              		.loc 1 192 21 is_stmt 0 view .LVU594
+ 2040 0680 FFF7FEFF 		bl	HAL_GetTick
+ 2041              	.LVL110:
+ 192:src/ssd1306/graphics.c ****     }
+ 2042              		.loc 1 192 19 discriminator 1 view .LVU595
+ 2043 0684 604B     		ldr	r3, .L37+40
+ 2044 0686 1860     		str	r0, [r3]
+ 2045              		.loc 1 194 1 view .LVU596
+ARM GAS  /tmp/ccZhEbBz.s 			page 51
+
+
+ 2046 0688 2BB0     		add	sp, sp, #172
+ 2047              	.LCFI7:
+ 2048              		.cfi_remember_state
+ 2049              		.cfi_def_cfa_offset 84
+ 2050              		@ sp needed
+ 2051 068a BDEC0C8B 		vldm	sp!, {d8-d13}
+ 2052              	.LCFI8:
+ 2053              		.cfi_restore 90
+ 2054              		.cfi_restore 91
+ 2055              		.cfi_restore 88
+ 2056              		.cfi_restore 89
+ 2057              		.cfi_restore 86
+ 2058              		.cfi_restore 87
+ 2059              		.cfi_restore 84
+ 2060              		.cfi_restore 85
+ 2061              		.cfi_restore 82
+ 2062              		.cfi_restore 83
+ 2063              		.cfi_restore 80
+ 2064              		.cfi_restore 81
+ 2065              		.cfi_def_cfa_offset 36
+ 2066 068e BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 2067              	.LVL111:
+ 2068              	.L28:
+ 2069              	.LCFI9:
+ 2070              		.cfi_restore_state
+ 2071              	.LBB448:
+ 2072              	.LBB447:
+ 2073              	.LBB446:
+ 2074              	.LBB269:
+ 2075              		.loc 1 194 1 view .LVU597
+ 2076 0692 0027     		movs	r7, #0
+ 2077              	.LBB219:
+ 2078              	.LBB220:
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2079              		.loc 1 112 60 view .LVU598
+ 2080 0694 9FED5DAA 		vldr.32	s20, .L37+44
+ 2081              	.LBB221:
+ 2082              	.LBB222:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 2083              		.loc 2 79 21 view .LVU599
+ 2084 0698 DFED569A 		vldr.32	s19, .L37+20
+ 2085 069c DFF88081 		ldr	r8, .L37+64
+ 2086 06a0 DFF88091 		ldr	r9, .L37+68
+ 2087 06a4 DFF880B1 		ldr	fp, .L37+72
+ 2088              	.LBE222:
+ 2089              	.LBE221:
+ 114:src/ssd1306/graphics.c ****         cube->rot = (RanVec3){0, 0, 0};
+ 2090              		.loc 1 114 19 view .LVU600
+ 2091 06a8 9FED599A 		vldr.32	s18, .L37+48
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2092              		.loc 1 112 48 view .LVU601
+ 2093 06ac 3D46     		mov	r5, r7
+ 2094              	.LVL112:
+ 2095              	.L12:
+ 105:src/ssd1306/graphics.c ****         //if(rand() & 1)goto end;
+ 2096              		.loc 1 105 9 is_stmt 1 view .LVU602
+ 108:src/ssd1306/graphics.c ****         cube_idx %= CUBE_COUNT;
+ARM GAS  /tmp/ccZhEbBz.s 			page 52
+
+
+ 2097              		.loc 1 108 9 view .LVU603
+ 109:src/ssd1306/graphics.c ****         cube->alive = 1;
+ 2098              		.loc 1 109 9 view .LVU604
+ 105:src/ssd1306/graphics.c ****         //if(rand() & 1)goto end;
+ 2099              		.loc 1 105 36 is_stmt 0 view .LVU605
+ 2100 06ae D8F80030 		ldr	r3, [r8]
+ 109:src/ssd1306/graphics.c ****         cube->alive = 1;
+ 2101              		.loc 1 109 18 view .LVU606
+ 2102 06b2 5849     		ldr	r1, .L37+52
+ 108:src/ssd1306/graphics.c ****         cube_idx %= CUBE_COUNT;
+ 2103              		.loc 1 108 17 view .LVU607
+ 2104 06b4 5A1C     		adds	r2, r3, #1
+ 109:src/ssd1306/graphics.c ****         cube->alive = 1;
+ 2105              		.loc 1 109 18 view .LVU608
+ 2106 06b6 A1FB0261 		umull	r6, r1, r1, r2
+ 2107 06ba 3224     		movs	r4, #50
+ 2108 06bc 0909     		lsrs	r1, r1, #4
+ 2109 06be 04FB1122 		mls	r2, r4, r1, r2
+ 105:src/ssd1306/graphics.c ****         //if(rand() & 1)goto end;
+ 2110              		.loc 1 105 36 view .LVU609
+ 2111 06c2 2C24     		movs	r4, #44
+ 2112 06c4 04FB03F3 		mul	r3, r4, r3
+ 110:src/ssd1306/graphics.c **** 
+ 2113              		.loc 1 110 21 view .LVU610
+ 2114 06c8 0121     		movs	r1, #1
+ 107:src/ssd1306/graphics.c ****         cube_idx++;
+ 2115              		.loc 1 107 11 view .LVU611
+ 2116 06ca 19F80360 		ldrb	r6, [r9, r3]	@ zero_extendqisi2
+ 105:src/ssd1306/graphics.c ****         //if(rand() & 1)goto end;
+ 2117              		.loc 1 105 19 view .LVU612
+ 2118 06ce 03EB0904 		add	r4, r3, r9
+ 2119              	.LVL113:
+ 107:src/ssd1306/graphics.c ****         cube_idx++;
+ 2120              		.loc 1 107 9 is_stmt 1 view .LVU613
+ 107:src/ssd1306/graphics.c ****         cube_idx++;
+ 2121              		.loc 1 107 11 is_stmt 0 view .LVU614
+ 2122 06d2 002E     		cmp	r6, #0
+ 2123 06d4 7FF42DAD 		bne	.L10
+ 110:src/ssd1306/graphics.c **** 
+ 2124              		.loc 1 110 21 view .LVU615
+ 2125 06d8 09F80310 		strb	r1, [r9, r3]
+ 109:src/ssd1306/graphics.c ****         cube->alive = 1;
+ 2126              		.loc 1 109 18 view .LVU616
+ 2127 06dc C8F80020 		str	r2, [r8]
+ 110:src/ssd1306/graphics.c **** 
+ 2128              		.loc 1 110 9 is_stmt 1 view .LVU617
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2129              		.loc 1 112 9 view .LVU618
+ 2130              	.LVL114:
+ 2131              	.LBB238:
+ 2132              	.LBI221:
+  78:src/ssd1306/ran.h ****     int index = ang * (4095 / 2.0f / RAN_PI);
+ 2133              		.loc 2 78 23 view .LVU619
+ 2134              	.LBB233:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 2135              		.loc 2 79 5 view .LVU620
+ 2136              	.LBE233:
+ARM GAS  /tmp/ccZhEbBz.s 			page 53
+
+
+ 2137              	.LBE238:
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2138              		.loc 1 112 48 is_stmt 0 view .LVU621
+ 2139 06e0 FFF7FEFF 		bl	__aeabi_i2d
+ 2140              	.LVL115:
+ 2141 06e4 3EA3     		adr	r3, .L37
+ 2142 06e6 D3E90023 		ldrd	r2, [r3]
+ 2143 06ea FFF7FEFF 		bl	__aeabi_dmul
+ 2144              	.LVL116:
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2145              		.loc 1 112 60 view .LVU622
+ 2146 06ee 07EE905A 		vmov	s15, r5	@ int
+ 2147 06f2 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2148              		.loc 1 112 48 view .LVU623
+ 2149 06f6 0646     		mov	r6, r0
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2150              		.loc 1 112 60 view .LVU624
+ 2151 06f8 67EE8A7A 		vmul.f32	s15, s15, s20
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2152              		.loc 1 112 48 view .LVU625
+ 2153 06fc 0F46     		mov	r7, r1
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2154              		.loc 1 112 60 view .LVU626
+ 2155 06fe 17EE900A 		vmov	r0, s15
+ 2156 0702 FFF7FEFF 		bl	__aeabi_f2d
+ 2157              	.LVL117:
+ 2158 0706 0246     		mov	r2, r0
+ 2159 0708 0B46     		mov	r3, r1
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2160              		.loc 1 112 56 view .LVU627
+ 2161 070a 3046     		mov	r0, r6
+ 2162 070c 3946     		mov	r1, r7
+ 2163 070e FFF7FEFF 		bl	__aeabi_dadd
+ 2164              	.LVL118:
+ 112:src/ssd1306/graphics.c ****         //cube->scale = 1;//ran_fast_sin(cube_idx / (float)CUBE_COUNT * 2 * RAN_PI) * 0.5 + 0.6;
+ 2165              		.loc 1 112 28 view .LVU628
+ 2166 0712 FFF7FEFF 		bl	__aeabi_d2f
+ 2167              	.LVL119:
+ 2168 0716 07EE900A 		vmov	s15, r0
+ 2169              	.LBB239:
+ 2170              	.LBB234:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 2171              		.loc 2 79 21 view .LVU629
+ 2172 071a 67EEA97A 		vmul.f32	s15, s15, s19
+ 2173              	.LBB223:
+ 2174              	.LBB224:
+  20:src/ssd1306/ran.h **** }
+ 2175              		.loc 2 20 40 view .LVU630
+ 2176 071e F1EE046A 		vmov.f32	s13, #5.0e+0
+ 2177              	.LBE224:
+ 2178              	.LBE223:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 2179              		.loc 2 79 9 view .LVU631
+ 2180 0722 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 2181              	.LBE234:
+ 2182              	.LBE239:
+ARM GAS  /tmp/ccZhEbBz.s 			page 54
+
+
+ 114:src/ssd1306/graphics.c ****         cube->rot = (RanVec3){0, 0, 0};
+ 2183              		.loc 1 114 19 view .LVU632
+ 2184 0726 84ED039A 		vstr.32	s18, [r4, #12]
+ 2185              	.LBB240:
+ 2186              	.LBB235:
+  79:src/ssd1306/ran.h ****     float s = sine_table[index & 0xfff];
+ 2187              		.loc 2 79 9 view .LVU633
+ 2188 072a 17EE903A 		vmov	r3, s15	@ int
+ 2189              	.LVL120:
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 2190              		.loc 2 80 5 is_stmt 1 view .LVU634
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 2191              		.loc 2 81 5 view .LVU635
+ 2192              		.loc 2 82 5 view .LVU636
+ 2193              	.LBB229:
+ 2194              	.LBI223:
+  19:src/ssd1306/ran.h ****     return (RanVec2){v.x * scalar, v.y * scalar};
+ 2195              		.loc 2 19 23 view .LVU637
+ 2196              	.LBB225:
+  20:src/ssd1306/ran.h **** }
+ 2197              		.loc 2 20 5 view .LVU638
+ 2198              	.LBE225:
+ 2199              	.LBE229:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 2200              		.loc 2 81 33 is_stmt 0 view .LVU639
+ 2201 072e 03F58062 		add	r2, r3, #1024
+ 2202              	.LVL121:
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 2203              		.loc 2 80 32 view .LVU640
+ 2204 0732 C3F30B03 		ubfx	r3, r3, #0, #12
+ 2205              	.LVL122:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 2206              		.loc 2 81 41 view .LVU641
+ 2207 0736 C2F30B02 		ubfx	r2, r2, #0, #12
+ 2208              	.LVL123:
+  80:src/ssd1306/ran.h ****     float c = sine_table[(index + 1024) & 0xfff];
+ 2209              		.loc 2 80 11 view .LVU642
+ 2210 073a 0BEB8303 		add	r3, fp, r3, lsl #2
+ 2211              	.LBB230:
+ 2212              	.LBB226:
+  20:src/ssd1306/ran.h **** }
+ 2213              		.loc 2 20 40 view .LVU643
+ 2214 073e 93ED007A 		vldr.32	s14, [r3]
+ 2215              	.LBE226:
+ 2216              	.LBE230:
+ 2217              	.LBE235:
+ 2218              	.LBE240:
+ 115:src/ssd1306/graphics.c ****         cube->ang_vel = (RanVec3){
+ 2219              		.loc 1 115 19 view .LVU644
+ 2220 0742 C4ED058A 		vstr.32	s17, [r4, #20]
+ 2221              	.LBB241:
+ 2222              	.LBB236:
+  81:src/ssd1306/ran.h ****     return ran_v2_scale((RanVec2){c, s}, mag);
+ 2223              		.loc 2 81 11 view .LVU645
+ 2224 0746 0BEB8203 		add	r3, fp, r2, lsl #2
+ 2225              	.LBB231:
+ 2226              	.LBB227:
+ARM GAS  /tmp/ccZhEbBz.s 			page 55
+
+
+  20:src/ssd1306/ran.h **** }
+ 2227              		.loc 2 20 26 view .LVU646
+ 2228 074a D3ED007A 		vldr.32	s15, [r3]
+ 2229              	.LVL124:
+  20:src/ssd1306/ran.h **** }
+ 2230              		.loc 2 20 26 view .LVU647
+ 2231              	.LBE227:
+ 2232              	.LBE231:
+ 2233              	.LBE236:
+ 2234              	.LBE241:
+ 115:src/ssd1306/graphics.c ****         cube->ang_vel = (RanVec3){
+ 2235              		.loc 1 115 19 view .LVU648
+ 2236 074e C4ED068A 		vstr.32	s17, [r4, #24]
+ 2237              	.LBB242:
+ 2238              	.LBB237:
+ 2239              	.LBB232:
+ 2240              	.LBB228:
+  20:src/ssd1306/ran.h **** }
+ 2241              		.loc 2 20 26 view .LVU649
+ 2242 0752 67EEA67A 		vmul.f32	s15, s15, s13
+  20:src/ssd1306/ran.h **** }
+ 2243              		.loc 2 20 40 view .LVU650
+ 2244 0756 27EE267A 		vmul.f32	s14, s14, s13
+ 2245              	.LVL125:
+  20:src/ssd1306/ran.h **** }
+ 2246              		.loc 2 20 40 view .LVU651
+ 2247              	.LBE228:
+ 2248              	.LBE232:
+ 2249              	.LBE237:
+ 2250              	.LBE242:
+ 114:src/ssd1306/graphics.c ****         cube->rot = (RanVec3){0, 0, 0};
+ 2251              		.loc 1 114 9 is_stmt 1 view .LVU652
+ 114:src/ssd1306/graphics.c ****         cube->rot = (RanVec3){0, 0, 0};
+ 2252              		.loc 1 114 19 is_stmt 0 view .LVU653
+ 2253 075a C4ED027A 		vstr.32	s15, [r4, #8]
+ 2254 075e 84ED047A 		vstr.32	s14, [r4, #16]
+ 115:src/ssd1306/graphics.c ****         cube->ang_vel = (RanVec3){
+ 2255              		.loc 1 115 9 is_stmt 1 view .LVU654
+ 116:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2256              		.loc 1 116 9 view .LVU655
+ 2257              	.LBB243:
+ 2258              	.LBI243:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2259              		.loc 2 77 21 view .LVU656
+ 2260              	.LBB244:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2261              		.loc 2 77 34 view .LVU657
+ 2262              	.LBE244:
+ 2263              	.LBE243:
+ 115:src/ssd1306/graphics.c ****         cube->ang_vel = (RanVec3){
+ 2264              		.loc 1 115 19 is_stmt 0 view .LVU658
+ 2265 0762 C4ED078A 		vstr.32	s17, [r4, #28]
+ 2266              	.LBB248:
+ 2267              	.LBB245:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2268              		.loc 2 77 41 view .LVU659
+ 2269 0766 FFF7FEFF 		bl	rand
+ARM GAS  /tmp/ccZhEbBz.s 			page 56
+
+
+ 2270              	.LVL126:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2271              		.loc 2 77 41 view .LVU660
+ 2272 076a 07EE900A 		vmov	s15, r0	@ int
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2273              		.loc 2 77 48 discriminator 1 view .LVU661
+ 2274 076e 9FED2ADA 		vldr.32	s26, .L37+56
+ 2275              	.LBE245:
+ 2276              	.LBE248:
+ 117:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2277              		.loc 1 117 19 discriminator 1 view .LVU662
+ 2278 0772 DFED2AAA 		vldr.32	s21, .L37+60
+ 2279              	.LBB249:
+ 2280              	.LBB246:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2281              		.loc 2 77 48 discriminator 1 view .LVU663
+ 2282 0776 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 2283              	.LBE246:
+ 2284              	.LBE249:
+ 117:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2285              		.loc 1 117 41 discriminator 1 view .LVU664
+ 2286 077a BFEE008A 		vmov.f32	s16, #-1.0e+0
+ 2287              	.LBB250:
+ 2288              	.LBB247:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2289              		.loc 2 77 48 discriminator 1 view .LVU665
+ 2290 077e 67EE8D7A 		vmul.f32	s15, s15, s26
+ 2291              	.LBE247:
+ 2292              	.LBE250:
+ 117:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2293              		.loc 1 117 41 discriminator 1 view .LVU666
+ 2294 0782 B0EE00CA 		vmov.f32	s24, #2.0e+0
+ 2295 0786 F0EE48CA 		vmov.f32	s25, s16
+ 2296 078a E7EE8CCA 		vfma.f32	s25, s15, s24
+ 2297              	.LBB251:
+ 2298              	.LBB252:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2299              		.loc 2 77 41 view .LVU667
+ 2300 078e FFF7FEFF 		bl	rand
+ 2301              	.LVL127:
+ 2302 0792 07EE900A 		vmov	s15, r0	@ int
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2303              		.loc 2 77 48 discriminator 1 view .LVU668
+ 2304 0796 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 2305              	.LBE252:
+ 2306              	.LBE251:
+ 118:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f)
+ 2307              		.loc 1 118 41 discriminator 1 view .LVU669
+ 2308 079a F0EE48BA 		vmov.f32	s23, s16
+ 2309              	.LBB255:
+ 2310              	.LBB253:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2311              		.loc 2 77 48 discriminator 1 view .LVU670
+ 2312 079e 67EE8D7A 		vmul.f32	s15, s15, s26
+ 2313              	.LBE253:
+ 2314              	.LBE255:
+ 117:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ARM GAS  /tmp/ccZhEbBz.s 			page 57
+
+
+ 2315              		.loc 1 117 19 discriminator 1 view .LVU671
+ 2316 07a2 6CEEAACA 		vmul.f32	s25, s25, s21
+ 2317              	.LBB256:
+ 2318              	.LBI251:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2319              		.loc 2 77 21 is_stmt 1 view .LVU672
+ 2320              	.LBB254:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2321              		.loc 2 77 34 view .LVU673
+ 2322              	.LBE254:
+ 2323              	.LBE256:
+ 118:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f)
+ 2324              		.loc 1 118 41 is_stmt 0 discriminator 1 view .LVU674
+ 2325 07a6 E7EE8CBA 		vfma.f32	s23, s15, s24
+ 2326              	.LBB257:
+ 2327              	.LBB258:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2328              		.loc 2 77 41 view .LVU675
+ 2329 07aa FFF7FEFF 		bl	rand
+ 2330              	.LVL128:
+ 2331 07ae 07EE900A 		vmov	s15, r0	@ int
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2332              		.loc 2 77 48 discriminator 1 view .LVU676
+ 2333 07b2 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 2334              	.LBE258:
+ 2335              	.LBE257:
+ 118:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f)
+ 2336              		.loc 1 118 19 discriminator 1 view .LVU677
+ 2337 07b6 6BEEAABA 		vmul.f32	s23, s23, s21
+ 2338              	.LBB260:
+ 2339              	.LBI257:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2340              		.loc 2 77 21 is_stmt 1 view .LVU678
+ 2341              	.LBB259:
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2342              		.loc 2 77 34 view .LVU679
+  77:src/ssd1306/ran.h **** static inline RanVec2 ran_fast_polar(float ang, float mag){
+ 2343              		.loc 2 77 48 is_stmt 0 discriminator 1 view .LVU680
+ 2344 07ba 67EE8D7A 		vmul.f32	s15, s15, s26
+ 2345              	.LBE259:
+ 2346              	.LBE260:
+ 2347              	.LBE220:
+ 104:src/ssd1306/graphics.c ****         AnimCube *cube = cube_list + cube_idx;
+ 2348              		.loc 1 104 30 discriminator 1 view .LVU681
+ 2349 07be 0135     		adds	r5, r5, #1
+ 2350              	.LVL129:
+ 2351              	.LBB261:
+ 119:src/ssd1306/graphics.c ****         };
+ 2352              		.loc 1 119 41 discriminator 1 view .LVU682
+ 2353 07c0 A7EE8C8A 		vfma.f32	s16, s15, s24
+ 2354              	.LBE261:
+ 104:src/ssd1306/graphics.c ****         AnimCube *cube = cube_list + cube_idx;
+ 2355              		.loc 1 104 30 discriminator 1 view .LVU683
+ 2356 07c4 032D     		cmp	r5, #3
+ 2357              	.LBE219:
+ 124:src/ssd1306/graphics.c **** }
+ 2358              		.loc 1 124 9 view .LVU684
+ARM GAS  /tmp/ccZhEbBz.s 			page 58
+
+
+ 2359 07c6 BAF80000 		ldrh	r0, [r10]
+ 2360              	.LBB263:
+ 2361              	.LBB262:
+ 116:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2362              		.loc 1 116 23 view .LVU685
+ 2363 07ca C4ED08CA 		vstr.32	s25, [r4, #32]
+ 119:src/ssd1306/graphics.c ****         };
+ 2364              		.loc 1 119 19 discriminator 1 view .LVU686
+ 2365 07ce 68EE2A7A 		vmul.f32	s15, s16, s21
+ 116:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2366              		.loc 1 116 23 view .LVU687
+ 2367 07d2 C4ED09BA 		vstr.32	s23, [r4, #36]
+ 2368 07d6 C4ED0A7A 		vstr.32	s15, [r4, #40]
+ 2369              	.LVL130:
+ 116:src/ssd1306/graphics.c ****             0.03f * (ran_randf() * 2.0f - 1.0f),
+ 2370              		.loc 1 116 23 view .LVU688
+ 2371              	.LBE262:
+ 104:src/ssd1306/graphics.c ****         AnimCube *cube = cube_list + cube_idx;
+ 2372              		.loc 1 104 37 is_stmt 1 discriminator 2 view .LVU689
+ 104:src/ssd1306/graphics.c ****         AnimCube *cube = cube_list + cube_idx;
+ 2373              		.loc 1 104 30 discriminator 1 view .LVU690
+ 2374 07da 7FF468AF 		bne	.L12
+ 2375              	.LBE263:
+ 123:src/ssd1306/graphics.c ****     tick++;
+ 2376              		.loc 1 123 1 is_stmt 0 view .LVU691
+ 2377 07de A8E4     		b	.L10
+ 2378              	.L38:
+ 2379              		.align	3
+ 2380              	.L37:
+ 2381 07e0 5839B4C8 		.word	-927712936
+ 2382 07e4 76BE9F3F 		.word	1067433590
+ 2383 07e8 00000000 		.word	tick.1
+ 2384 07ec 6F12033B 		.word	990057071
+ 2385 07f0 DB0F4940 		.word	1078530011
+ 2386 07f4 54EF2244 		.word	1143140180
+ 2387 07f8 00000000 		.word	camera_fov
+ 2388 07fc 00000000 		.word	room_verts
+ 2389 0800 00008042 		.word	1115684864
+ 2390 0804 00000042 		.word	1107296256
+ 2391 0808 00000000 		.word	prev_tick.2
+ 2392 080c 920A0640 		.word	1074137746
+ 2393 0810 00002042 		.word	1109393408
+ 2394 0814 1F85EB51 		.word	1374389535
+ 2395 0818 00000030 		.word	805306368
+ 2396 081c 8FC2F53C 		.word	1022739087
+ 2397 0820 00000000 		.word	cube_idx
+ 2398 0824 00000000 		.word	cube_list
+ 2399 0828 00000000 		.word	sine_table
+ 2400              	.LBE269:
+ 2401              	.LBE446:
+ 2402              	.LBE447:
+ 2403              	.LBE448:
+ 2404              		.cfi_endproc
+ 2405              	.LFE151:
+ 2407              		.section	.bss.tick.0,"aw",%nobits
+ 2408              		.align	1
+ 2411              	tick.0:
+ARM GAS  /tmp/ccZhEbBz.s 			page 59
+
+
+ 2412 0000 0000     		.space	2
+ 2413              		.section	.bss.tick.1,"aw",%nobits
+ 2414              		.align	2
+ 2417              	tick.1:
+ 2418 0000 00000000 		.space	4
+ 2419              		.section	.bss.prev_tick.2,"aw",%nobits
+ 2420              		.align	2
+ 2423              	prev_tick.2:
+ 2424 0000 00000000 		.space	4
+ 2425              		.section	.bss.room_verts,"aw",%nobits
+ 2426              		.align	2
+ 2429              	room_verts:
+ 2430 0000 00000000 		.space	192
+ 2430      00000000 
+ 2430      00000000 
+ 2430      00000000 
+ 2430      00000000 
+ 2431              		.section	.rodata.cube_verts,"a"
+ 2432              		.align	2
+ 2435              	cube_verts:
+ 2436 0000 0000803F 		.word	1065353216
+ 2437 0004 0000803F 		.word	1065353216
+ 2438 0008 000080BF 		.word	-1082130432
+ 2439 000c 000080BF 		.word	-1082130432
+ 2440 0010 0000803F 		.word	1065353216
+ 2441 0014 000080BF 		.word	-1082130432
+ 2442 0018 000080BF 		.word	-1082130432
+ 2443 001c 000080BF 		.word	-1082130432
+ 2444 0020 000080BF 		.word	-1082130432
+ 2445 0024 0000803F 		.word	1065353216
+ 2446 0028 000080BF 		.word	-1082130432
+ 2447 002c 000080BF 		.word	-1082130432
+ 2448 0030 0000803F 		.word	1065353216
+ 2449 0034 0000803F 		.word	1065353216
+ 2450 0038 0000803F 		.word	1065353216
+ 2451 003c 000080BF 		.word	-1082130432
+ 2452 0040 0000803F 		.word	1065353216
+ 2453 0044 0000803F 		.word	1065353216
+ 2454 0048 000080BF 		.word	-1082130432
+ 2455 004c 000080BF 		.word	-1082130432
+ 2456 0050 0000803F 		.word	1065353216
+ 2457 0054 0000803F 		.word	1065353216
+ 2458 0058 000080BF 		.word	-1082130432
+ 2459 005c 0000803F 		.word	1065353216
+ 2460              		.section	.data.cube_speed,"aw"
+ 2461              		.align	2
+ 2464              	cube_speed:
+ 2465 0000 CDCCCC3D 		.word	1036831949
+ 2466              		.section	.bss.avg_audio,"aw",%nobits
+ 2467              		.align	2
+ 2470              	avg_audio:
+ 2471 0000 00000000 		.space	64
+ 2471      00000000 
+ 2471      00000000 
+ 2471      00000000 
+ 2471      00000000 
+ 2472              		.section	.bss.avg_audio_cursor,"aw",%nobits
+ARM GAS  /tmp/ccZhEbBz.s 			page 60
+
+
+ 2475              	avg_audio_cursor:
+ 2476 0000 00       		.space	1
+ 2477              		.section	.bss.cube_idx,"aw",%nobits
+ 2478              		.align	2
+ 2481              	cube_idx:
+ 2482 0000 00000000 		.space	4
+ 2483              		.section	.data.camera_fov,"aw"
+ 2484              		.align	2
+ 2487              	camera_fov:
+ 2488 0000 CDCCCC3F 		.word	1070386381
+ 2489              		.section	.bss.cube_list,"aw",%nobits
+ 2490              		.align	2
+ 2493              	cube_list:
+ 2494 0000 00000000 		.space	2200
+ 2494      00000000 
+ 2494      00000000 
+ 2494      00000000 
+ 2494      00000000 
+ 2495              		.text
+ 2496              	.Letext0:
+ 2497              		.file 3 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 2498              		.file 4 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 2499              		.file 5 "src/ssd1306/ssd1306.h"
+ 2500              		.file 6 "src/audio.h"
+ 2501              		.file 7 "/usr/arm-none-eabi/include/stdlib.h"
+ 2502              		.file 8 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
+ARM GAS  /tmp/ccZhEbBz.s 			page 61
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 graphics.c
+     /tmp/ccZhEbBz.s:21     .text.graphics_init:00000000 $t
+     /tmp/ccZhEbBz.s:28     .text.graphics_init:00000000 graphics_init
+     /tmp/ccZhEbBz.s:545    .text.graphics_init:00000150 $d
+     /tmp/ccZhEbBz.s:2475   .bss.avg_audio_cursor:00000000 avg_audio_cursor
+     /tmp/ccZhEbBz.s:2493   .bss.cube_list:00000000 cube_list
+     /tmp/ccZhEbBz.s:2429   .bss.room_verts:00000000 room_verts
+     /tmp/ccZhEbBz.s:561    .text.graphics_update:00000000 $t
+     /tmp/ccZhEbBz.s:568    .text.graphics_update:00000000 graphics_update
+     /tmp/ccZhEbBz.s:642    .text.graphics_update:00000024 $d
+     /tmp/ccZhEbBz.s:2423   .bss.prev_tick.2:00000000 prev_tick.2
+     /tmp/ccZhEbBz.s:654    .text.graphics_update:00000028 $t
+     /tmp/ccZhEbBz.s:1567   .text.graphics_update:000003e8 $d
+     /tmp/ccZhEbBz.s:2470   .bss.avg_audio:00000000 avg_audio
+     /tmp/ccZhEbBz.s:2464   .data.cube_speed:00000000 cube_speed
+     /tmp/ccZhEbBz.s:2487   .data.camera_fov:00000000 camera_fov
+     /tmp/ccZhEbBz.s:2435   .rodata.cube_verts:00000000 cube_verts
+     /tmp/ccZhEbBz.s:2411   .bss.tick.0:00000000 tick.0
+     /tmp/ccZhEbBz.s:1587   .text.graphics_update:00000434 $t
+     /tmp/ccZhEbBz.s:2381   .text.graphics_update:000007e0 $d
+     /tmp/ccZhEbBz.s:2417   .bss.tick.1:00000000 tick.1
+     /tmp/ccZhEbBz.s:2481   .bss.cube_idx:00000000 cube_idx
+     /tmp/ccZhEbBz.s:2408   .bss.tick.0:00000000 $d
+     /tmp/ccZhEbBz.s:2414   .bss.tick.1:00000000 $d
+     /tmp/ccZhEbBz.s:2420   .bss.prev_tick.2:00000000 $d
+     /tmp/ccZhEbBz.s:2426   .bss.room_verts:00000000 $d
+     /tmp/ccZhEbBz.s:2432   .rodata.cube_verts:00000000 $d
+     /tmp/ccZhEbBz.s:2461   .data.cube_speed:00000000 $d
+     /tmp/ccZhEbBz.s:2467   .bss.avg_audio:00000000 $d
+     /tmp/ccZhEbBz.s:2476   .bss.avg_audio_cursor:00000000 $d
+     /tmp/ccZhEbBz.s:2478   .bss.cube_idx:00000000 $d
+     /tmp/ccZhEbBz.s:2484   .data.camera_fov:00000000 $d
+     /tmp/ccZhEbBz.s:2490   .bss.cube_list:00000000 $d
+
+UNDEFINED SYMBOLS
+oled_init
+sine_table
+__aeabi_i2d
+__aeabi_dmul
+__aeabi_f2d
+__aeabi_dadd
+__aeabi_d2f
+HAL_GetTick
+audio_get_sample_vol
+oled_draw_line
+oled_draw_line_dotted
+oled_show
+rand

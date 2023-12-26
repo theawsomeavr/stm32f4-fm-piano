@@ -1,0 +1,8 @@
+-xc++-header
+-I.
+-I./libs/mz_report
+-I./libs/args_parser
+-I./libs/raylib
+-I./libs/rtmidi
+-I./libs/midi_parsee
+-std=c++20

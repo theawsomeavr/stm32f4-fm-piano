@@ -1,0 +1,1866 @@
+ARM GAS  /tmp/ccrQqemJ.s 			page 1
+
+
+   1              		.cpu cortex-m4
+   2              		.arch armv7e-m
+   3              		.fpu fpv4-sp-d16
+   4              		.eabi_attribute 27, 1
+   5              		.eabi_attribute 28, 1
+   6              		.eabi_attribute 20, 1
+   7              		.eabi_attribute 21, 1
+   8              		.eabi_attribute 23, 3
+   9              		.eabi_attribute 24, 1
+  10              		.eabi_attribute 25, 1
+  11              		.eabi_attribute 26, 1
+  12              		.eabi_attribute 30, 2
+  13              		.eabi_attribute 34, 1
+  14              		.eabi_attribute 18, 4
+  15              		.file	"led_player.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.file 1 "src/led_player.c"
+  20              		.global	__aeabi_ui2d
+  21              		.global	__aeabi_dmul
+  22              		.global	__aeabi_d2uiz
+  23              		.section	.text.rgb_lighter,"ax",%progbits
+  24              		.align	1
+  25              		.p2align 2,,3
+  26              		.syntax unified
+  27              		.thumb
+  28              		.thumb_func
+  30              	rgb_lighter:
+  31              	.LVL0:
+  32              	.LFB137:
+   1:src/led_player.c **** #include "stm32f4xx_hal.h"
+   2:src/led_player.c **** #include <led_player.h>
+   3:src/led_player.c **** #include <leds.h>
+   4:src/led_player.c **** 
+   5:src/led_player.c **** #define MAX_NOTES 4
+   6:src/led_player.c **** 
+   7:src/led_player.c **** typedef struct {
+   8:src/led_player.c ****     uint8_t channel;
+   9:src/led_player.c ****     uint8_t note;
+  10:src/led_player.c ****     uint8_t vel;
+  11:src/led_player.c ****     uint32_t tick;
+  12:src/led_player.c **** }MIDINote;
+  13:src/led_player.c **** 
+  14:src/led_player.c **** typedef struct {
+  15:src/led_player.c ****     MIDINote notes[MAX_NOTES];
+  16:src/led_player.c ****     void (*lighter)(float *colors, MIDINote *led);
+  17:src/led_player.c **** }LedNote;
+  18:src/led_player.c **** 
+  19:src/led_player.c **** //Cool piecewise function values
+  20:src/led_player.c **** static const float damp[] = { 0.0f, 0.05595f, 0.11080000000000001f, 0.16455f, 0.2172f, 0.2687500000
+  21:src/led_player.c **** static const uint8_t channel_colors[16][3] = {
+  22:src/led_player.c ****     {255, 0, 0},
+  23:src/led_player.c ****     {255, 174, 0},
+  24:src/led_player.c ****     {153, 255, 0},
+  25:src/led_player.c ****     {0, 255, 17},
+  26:src/led_player.c ****     {0, 255, 242},
+ARM GAS  /tmp/ccrQqemJ.s 			page 2
+
+
+  27:src/led_player.c ****     {0, 110, 255},
+  28:src/led_player.c ****     {13, 0, 255},
+  29:src/led_player.c ****     {153, 0, 255},
+  30:src/led_player.c ****     {255, 0, 230},
+  31:src/led_player.c ****     {0, 0, 0},   //channel 10
+  32:src/led_player.c ****     {255, 0, 132},
+  33:src/led_player.c ****     {251, 255, 0},
+  34:src/led_player.c ****     {185, 177, 250},
+  35:src/led_player.c ****     {132, 255, 130},
+  36:src/led_player.c ****     {255, 130, 130},
+  37:src/led_player.c ****     {255, 255, 255},
+  38:src/led_player.c **** };
+  39:src/led_player.c **** 
+  40:src/led_player.c **** static const uint8_t led_mapping[LED_COUNT] = {
+  41:src/led_player.c ****     21, 22, 20, 23, 19, 18, 24, 17, 25, 16, 26, 15, 
+  42:src/led_player.c ****     14, 27, 13, 28, 12, 11, 29, 10, 30, 9, 31,8,
+  43:src/led_player.c ****     7, 32, 6, 33, 5, 4, 34, 3, 35, 2, 0, 1
+  44:src/led_player.c **** };
+  45:src/led_player.c **** 
+  46:src/led_player.c **** static LedNote led_keys[LED_COUNT];
+  47:src/led_player.c **** 
+  48:src/led_player.c **** static inline uint8_t get_index(int note){
+  49:src/led_player.c ****     note -= 60;
+  50:src/led_player.c ****     while(note < 0){
+  51:src/led_player.c ****         note += LED_COUNT;
+  52:src/led_player.c ****     }
+  53:src/led_player.c ****     return note % LED_COUNT;
+  54:src/led_player.c **** } 
+  55:src/led_player.c **** 
+  56:src/led_player.c **** static void led_player_silence_chan(uint8_t channel){
+  57:src/led_player.c ****     for(uint8_t i = 0; i != LED_COUNT; i++){
+  58:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+  59:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+  60:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+  61:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+  62:src/led_player.c ****         }
+  63:src/led_player.c ****     }
+  64:src/led_player.c **** }
+  65:src/led_player.c **** 
+  66:src/led_player.c **** static float amount(uint32_t tick){
+  67:src/led_player.c ****     tick *= 4.5;
+  68:src/led_player.c ****     if(tick >= sizeof(damp) / 4)return 1;
+  69:src/led_player.c ****     return damp[tick];
+  70:src/led_player.c **** }
+  71:src/led_player.c **** 
+  72:src/led_player.c **** //I'm way too lazy to implement code for faulty leds
+  73:src/led_player.c **** #if 0
+  74:src/led_player.c **** static void rb_lighter(float *colors, MIDINote *led){
+  75:src/led_player.c ****     float brightness = amount(led->tick);
+  76:src/led_player.c ****     colors[0] += brightness;
+  77:src/led_player.c **** }
+  78:src/led_player.c **** 
+  79:src/led_player.c **** static void rg_lighter(float *colors, MIDINote *led){
+  80:src/led_player.c ****     float brightness = amount(led->tick);
+  81:src/led_player.c ****     colors[0] += brightness;
+  82:src/led_player.c **** }
+  83:src/led_player.c **** 
+ARM GAS  /tmp/ccrQqemJ.s 			page 3
+
+
+  84:src/led_player.c **** static void r_lighter(float *colors, MIDINote *led){
+  85:src/led_player.c ****     float brightness = amount(led->tick);
+  86:src/led_player.c ****     colors[0] += brightness;
+  87:src/led_player.c **** }
+  88:src/led_player.c **** #endif
+  89:src/led_player.c **** 
+  90:src/led_player.c **** static void rgb_lighter(float *colors, MIDINote *led){
+  33              		.loc 1 90 54 view -0
+  34              		.cfi_startproc
+  35              		@ args = 0, pretend = 0, frame = 0
+  36              		@ frame_needed = 0, uses_anonymous_args = 0
+  91:src/led_player.c ****     float brightness = amount(led->tick);
+  37              		.loc 1 91 5 view .LVU1
+  90:src/led_player.c ****     float brightness = amount(led->tick);
+  38              		.loc 1 90 54 is_stmt 0 view .LVU2
+  39 0000 38B5     		push	{r3, r4, r5, lr}
+  40              	.LCFI0:
+  41              		.cfi_def_cfa_offset 16
+  42              		.cfi_offset 3, -16
+  43              		.cfi_offset 4, -12
+  44              		.cfi_offset 5, -8
+  45              		.cfi_offset 14, -4
+  90:src/led_player.c ****     float brightness = amount(led->tick);
+  46              		.loc 1 90 54 view .LVU3
+  47 0002 0446     		mov	r4, r0
+  48              	.LBB10:
+  49              	.LBB11:
+  67:src/led_player.c ****     if(tick >= sizeof(damp) / 4)return 1;
+  50              		.loc 1 67 10 view .LVU4
+  51 0004 4868     		ldr	r0, [r1, #4]
+  52              	.LVL1:
+  67:src/led_player.c ****     if(tick >= sizeof(damp) / 4)return 1;
+  53              		.loc 1 67 10 view .LVU5
+  54              	.LBE11:
+  55              	.LBE10:
+  90:src/led_player.c ****     float brightness = amount(led->tick);
+  56              		.loc 1 90 54 view .LVU6
+  57 0006 0D46     		mov	r5, r1
+  58              	.LVL2:
+  59              	.LBB15:
+  60              	.LBI10:
+  66:src/led_player.c ****     tick *= 4.5;
+  61              		.loc 1 66 14 is_stmt 1 view .LVU7
+  62              	.LBB12:
+  67:src/led_player.c ****     if(tick >= sizeof(damp) / 4)return 1;
+  63              		.loc 1 67 5 view .LVU8
+  67:src/led_player.c ****     if(tick >= sizeof(damp) / 4)return 1;
+  64              		.loc 1 67 10 is_stmt 0 view .LVU9
+  65 0008 FFF7FEFF 		bl	__aeabi_ui2d
+  66              	.LVL3:
+  67:src/led_player.c ****     if(tick >= sizeof(damp) / 4)return 1;
+  67              		.loc 1 67 10 view .LVU10
+  68 000c 1F4B     		ldr	r3, .L6
+  69 000e 0022     		movs	r2, #0
+  70 0010 FFF7FEFF 		bl	__aeabi_dmul
+  71              	.LVL4:
+  72 0014 FFF7FEFF 		bl	__aeabi_d2uiz
+ARM GAS  /tmp/ccrQqemJ.s 			page 4
+
+
+  73              	.LVL5:
+  68:src/led_player.c ****     return damp[tick];
+  74              		.loc 1 68 5 is_stmt 1 view .LVU11
+  69:src/led_player.c **** }
+  75              		.loc 1 69 5 view .LVU12
+  68:src/led_player.c ****     return damp[tick];
+  76              		.loc 1 68 7 is_stmt 0 view .LVU13
+  77 0018 8128     		cmp	r0, #129
+  69:src/led_player.c **** }
+  78              		.loc 1 69 16 view .LVU14
+  79 001a 98BF     		it	ls
+  80 001c 1C4B     		ldrls	r3, .L6+4
+  81              	.LBE12:
+  82              	.LBE15:
+  92:src/led_player.c ****     const uint8_t *ch_colors = channel_colors[led->channel];
+  83              		.loc 1 92 20 view .LVU15
+  84 001e 1D4A     		ldr	r2, .L6+8
+  93:src/led_player.c **** 
+  94:src/led_player.c ****     colors[0] += ch_colors[0] * brightness * (1 / 255.0f);
+  85              		.loc 1 94 15 view .LVU16
+  86 0020 DFED1D6A 		vldr.32	s13, .L6+12
+  87 0024 94ED005A 		vldr.32	s10, [r4]
+  95:src/led_player.c ****     colors[1] += ch_colors[1] * brightness * (1 / 255.0f);
+  88              		.loc 1 95 15 view .LVU17
+  89 0028 D4ED015A 		vldr.32	s11, [r4, #4]
+  96:src/led_player.c ****     colors[2] += ch_colors[2] * brightness * (1 / 255.0f);
+  90              		.loc 1 96 15 view .LVU18
+  91 002c 94ED027A 		vldr.32	s14, [r4, #8]
+  92              	.LBB16:
+  93              	.LBB13:
+  69:src/led_player.c **** }
+  94              		.loc 1 69 16 view .LVU19
+  95 0030 9CBF     		itt	ls
+  96 0032 03EB8003 		addls	r3, r3, r0, lsl #2
+  97 0036 93ED006A 		vldrls.32	s12, [r3]
+  98              	.LBE13:
+  99              	.LBE16:
+  92:src/led_player.c **** 
+ 100              		.loc 1 92 20 view .LVU20
+ 101 003a 2B78     		ldrb	r3, [r5]	@ zero_extendqisi2
+ 102 003c 03EB4303 		add	r3, r3, r3, lsl #1
+ 103              	.LBB17:
+ 104              	.LBB14:
+  68:src/led_player.c ****     return damp[tick];
+ 105              		.loc 1 68 40 discriminator 1 view .LVU21
+ 106 0040 88BF     		it	hi
+ 107 0042 B7EE006A 		vmovhi.f32	s12, #1.0e+0
+ 108              	.LVL6:
+  68:src/led_player.c ****     return damp[tick];
+ 109              		.loc 1 68 40 discriminator 1 view .LVU22
+ 110              	.LBE14:
+ 111              	.LBE17:
+  92:src/led_player.c **** 
+ 112              		.loc 1 92 5 is_stmt 1 view .LVU23
+  94:src/led_player.c ****     colors[1] += ch_colors[1] * brightness * (1 / 255.0f);
+ 113              		.loc 1 94 27 is_stmt 0 view .LVU24
+ 114 0046 D15C     		ldrb	r1, [r2, r3]	@ zero_extendqisi2
+ARM GAS  /tmp/ccrQqemJ.s 			page 5
+
+
+ 115 0048 07EE901A 		vmov	s15, r1	@ int
+  94:src/led_player.c ****     colors[1] += ch_colors[1] * brightness * (1 / 255.0f);
+ 116              		.loc 1 94 31 view .LVU25
+ 117 004c F8EEE77A 		vcvt.f32.s32	s15, s15
+  92:src/led_player.c **** 
+ 118              		.loc 1 92 20 view .LVU26
+ 119 0050 1344     		add	r3, r3, r2
+ 120              	.LVL7:
+  94:src/led_player.c ****     colors[1] += ch_colors[1] * brightness * (1 / 255.0f);
+ 121              		.loc 1 94 5 is_stmt 1 view .LVU27
+  94:src/led_player.c ****     colors[1] += ch_colors[1] * brightness * (1 / 255.0f);
+ 122              		.loc 1 94 31 is_stmt 0 view .LVU28
+ 123 0052 67EE867A 		vmul.f32	s15, s15, s12
+  94:src/led_player.c ****     colors[1] += ch_colors[1] * brightness * (1 / 255.0f);
+ 124              		.loc 1 94 15 view .LVU29
+ 125 0056 A7EEA65A 		vfma.f32	s10, s15, s13
+ 126 005a 84ED005A 		vstr.32	s10, [r4]
+  95:src/led_player.c ****     colors[2] += ch_colors[2] * brightness * (1 / 255.0f);
+ 127              		.loc 1 95 5 is_stmt 1 view .LVU30
+  95:src/led_player.c ****     colors[2] += ch_colors[2] * brightness * (1 / 255.0f);
+ 128              		.loc 1 95 27 is_stmt 0 view .LVU31
+ 129 005e 5A78     		ldrb	r2, [r3, #1]	@ zero_extendqisi2
+ 130 0060 07EE902A 		vmov	s15, r2	@ int
+  95:src/led_player.c ****     colors[2] += ch_colors[2] * brightness * (1 / 255.0f);
+ 131              		.loc 1 95 31 view .LVU32
+ 132 0064 F8EEE77A 		vcvt.f32.s32	s15, s15
+ 133 0068 67EE867A 		vmul.f32	s15, s15, s12
+  95:src/led_player.c ****     colors[2] += ch_colors[2] * brightness * (1 / 255.0f);
+ 134              		.loc 1 95 15 view .LVU33
+ 135 006c E7EEA65A 		vfma.f32	s11, s15, s13
+ 136 0070 C4ED015A 		vstr.32	s11, [r4, #4]
+ 137              		.loc 1 96 5 is_stmt 1 view .LVU34
+ 138              		.loc 1 96 27 is_stmt 0 view .LVU35
+ 139 0074 9B78     		ldrb	r3, [r3, #2]	@ zero_extendqisi2
+ 140              	.LVL8:
+ 141              		.loc 1 96 27 view .LVU36
+ 142 0076 07EE903A 		vmov	s15, r3	@ int
+ 143              		.loc 1 96 31 view .LVU37
+ 144 007a F8EEE77A 		vcvt.f32.s32	s15, s15
+ 145 007e 67EE867A 		vmul.f32	s15, s15, s12
+ 146              		.loc 1 96 15 view .LVU38
+ 147 0082 A7EEA67A 		vfma.f32	s14, s15, s13
+ 148 0086 84ED027A 		vstr.32	s14, [r4, #8]
+  97:src/led_player.c **** }
+ 149              		.loc 1 97 1 view .LVU39
+ 150 008a 38BD     		pop	{r3, r4, r5, pc}
+ 151              	.LVL9:
+ 152              	.L7:
+ 153              		.loc 1 97 1 view .LVU40
+ 154              		.align	2
+ 155              	.L6:
+ 156 008c 00001240 		.word	1074921472
+ 157 0090 00000000 		.word	damp
+ 158 0094 00000000 		.word	channel_colors
+ 159 0098 8180803B 		.word	998277249
+ 160              		.cfi_endproc
+ 161              	.LFE137:
+ARM GAS  /tmp/ccrQqemJ.s 			page 6
+
+
+ 163              		.section	.text.led_player_init,"ax",%progbits
+ 164              		.align	1
+ 165              		.p2align 2,,3
+ 166              		.global	led_player_init
+ 167              		.syntax unified
+ 168              		.thumb
+ 169              		.thumb_func
+ 171              	led_player_init:
+ 172              	.LFB138:
+  98:src/led_player.c **** 
+  99:src/led_player.c **** void led_player_init(){
+ 173              		.loc 1 99 23 is_stmt 1 view -0
+ 174              		.cfi_startproc
+ 175              		@ args = 0, pretend = 0, frame = 0
+ 176              		@ frame_needed = 0, uses_anonymous_args = 0
+ 100:src/led_player.c ****     leds_init();
+ 177              		.loc 1 100 5 view .LVU42
+  99:src/led_player.c ****     leds_init();
+ 178              		.loc 1 99 23 is_stmt 0 view .LVU43
+ 179 0000 08B5     		push	{r3, lr}
+ 180              	.LCFI1:
+ 181              		.cfi_def_cfa_offset 8
+ 182              		.cfi_offset 3, -8
+ 183              		.cfi_offset 14, -4
+ 184              		.loc 1 100 5 view .LVU44
+ 185 0002 FFF7FEFF 		bl	leds_init
+ 186              	.LVL10:
+ 101:src/led_player.c ****     for(uint8_t i = 0; i != LED_COUNT; i++){
+ 187              		.loc 1 101 5 is_stmt 1 view .LVU45
+ 188              	.LBB18:
+ 189              		.loc 1 101 9 view .LVU46
+ 190              		.loc 1 101 26 discriminator 1 view .LVU47
+ 191 0006 074B     		ldr	r3, .L12
+ 192 0008 0748     		ldr	r0, .L12+4
+ 193 000a 03F5A261 		add	r1, r3, #1296
+ 194              	.LBB19:
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 103:src/led_player.c ****             led_keys[i].notes[j].note = 255;
+ 195              		.loc 1 103 39 is_stmt 0 view .LVU48
+ 196 000e FF22     		movs	r2, #255
+ 197              	.LVL11:
+ 198              	.L9:
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 199              		.loc 1 102 30 is_stmt 1 discriminator 1 view .LVU49
+ 200              		.loc 1 103 13 view .LVU50
+ 201              		.loc 1 103 39 is_stmt 0 view .LVU51
+ 202 0010 5A70     		strb	r2, [r3, #1]
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 203              		.loc 1 102 45 is_stmt 1 discriminator 3 view .LVU52
+ 204              	.LVL12:
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 205              		.loc 1 102 30 discriminator 1 view .LVU53
+ 206              		.loc 1 103 13 view .LVU54
+ 207              		.loc 1 103 39 is_stmt 0 view .LVU55
+ 208 0012 5A72     		strb	r2, [r3, #9]
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 209              		.loc 1 102 45 is_stmt 1 discriminator 3 view .LVU56
+ARM GAS  /tmp/ccrQqemJ.s 			page 7
+
+
+ 210              	.LVL13:
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 211              		.loc 1 102 30 discriminator 1 view .LVU57
+ 212              		.loc 1 103 13 view .LVU58
+ 213              		.loc 1 103 39 is_stmt 0 view .LVU59
+ 214 0014 5A74     		strb	r2, [r3, #17]
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 215              		.loc 1 102 45 is_stmt 1 discriminator 3 view .LVU60
+ 216              	.LVL14:
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 217              		.loc 1 102 30 discriminator 1 view .LVU61
+ 218              		.loc 1 103 13 view .LVU62
+ 219              		.loc 1 103 39 is_stmt 0 view .LVU63
+ 220 0016 5A76     		strb	r2, [r3, #25]
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 221              		.loc 1 102 45 is_stmt 1 discriminator 3 view .LVU64
+ 222              	.LVL15:
+ 102:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 223              		.loc 1 102 30 discriminator 1 view .LVU65
+ 224              	.LBE19:
+ 104:src/led_player.c ****         }
+ 105:src/led_player.c **** 
+ 106:src/led_player.c ****         led_keys[i].lighter = rgb_lighter;
+ 225              		.loc 1 106 9 view .LVU66
+ 226              		.loc 1 106 29 is_stmt 0 view .LVU67
+ 227 0018 1862     		str	r0, [r3, #32]
+ 101:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 228              		.loc 1 101 41 is_stmt 1 discriminator 2 view .LVU68
+ 229              	.LVL16:
+ 101:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 230              		.loc 1 101 26 discriminator 1 view .LVU69
+ 231 001a 2433     		adds	r3, r3, #36
+ 232              	.LVL17:
+ 101:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 233              		.loc 1 101 26 is_stmt 0 discriminator 1 view .LVU70
+ 234 001c 8B42     		cmp	r3, r1
+ 235 001e F7D1     		bne	.L9
+ 236              	.LBE18:
+ 107:src/led_player.c ****     }
+ 108:src/led_player.c **** }
+ 237              		.loc 1 108 1 view .LVU71
+ 238 0020 08BD     		pop	{r3, pc}
+ 239              	.LVL18:
+ 240              	.L13:
+ 241              		.loc 1 108 1 view .LVU72
+ 242 0022 00BF     		.align	2
+ 243              	.L12:
+ 244 0024 00000000 		.word	led_keys
+ 245 0028 00000000 		.word	rgb_lighter
+ 246              		.cfi_endproc
+ 247              	.LFE138:
+ 249              		.section	.text.led_player_update,"ax",%progbits
+ 250              		.align	1
+ 251              		.p2align 2,,3
+ 252              		.global	led_player_update
+ 253              		.syntax unified
+ 254              		.thumb
+ARM GAS  /tmp/ccrQqemJ.s 			page 8
+
+
+ 255              		.thumb_func
+ 257              	led_player_update:
+ 258              	.LFB140:
+ 109:src/led_player.c **** 
+ 110:src/led_player.c **** static void led_player_tick(){
+ 111:src/led_player.c ****     for(uint8_t i = 0; i != LED_COUNT; i++){
+ 112:src/led_player.c ****         MIDINote *notes = led_keys[i].notes;
+ 113:src/led_player.c ****         void (*call)(float *, MIDINote *) = led_keys[i].lighter;
+ 114:src/led_player.c ****         float rgb[3] = {0, 0, 0};
+ 115:src/led_player.c **** 
+ 116:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 117:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 118:src/led_player.c ****             call(rgb, notes + j);
+ 119:src/led_player.c ****             if(notes[j].vel == 0)notes[j].note = 255;
+ 120:src/led_player.c ****             notes[j].tick++;
+ 121:src/led_player.c ****         }
+ 122:src/led_player.c **** 
+ 123:src/led_player.c ****         rgb[0] *= 0.25;
+ 124:src/led_player.c ****         rgb[1] *= 0.25;
+ 125:src/led_player.c ****         rgb[2] *= 0.25;
+ 126:src/led_player.c ****         if(rgb[0] > 1)rgb[0] = 0;
+ 127:src/led_player.c ****         if(rgb[1] > 1)rgb[1] = 0;
+ 128:src/led_player.c ****         if(rgb[2] > 1)rgb[2] = 0;
+ 129:src/led_player.c **** 
+ 130:src/led_player.c ****         LedColor c = {200 * rgb[0], 200 * rgb[1], 200 * rgb[2]};
+ 131:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 132:src/led_player.c ****     }
+ 133:src/led_player.c **** 
+ 134:src/led_player.c ****     leds_show();
+ 135:src/led_player.c **** }
+ 136:src/led_player.c **** 
+ 137:src/led_player.c **** void led_player_update(){
+ 259              		.loc 1 137 25 is_stmt 1 view -0
+ 260              		.cfi_startproc
+ 261              		@ args = 0, pretend = 0, frame = 24
+ 262              		@ frame_needed = 0, uses_anonymous_args = 0
+ 138:src/led_player.c ****     static uint32_t prev_time = 0;
+ 263              		.loc 1 138 5 view .LVU74
+ 139:src/led_player.c ****     uint32_t time = HAL_GetTick();
+ 264              		.loc 1 139 5 view .LVU75
+ 137:src/led_player.c ****     static uint32_t prev_time = 0;
+ 265              		.loc 1 137 25 is_stmt 0 view .LVU76
+ 266 0000 2DE9F04F 		push	{r4, r5, r6, r7, r8, r9, r10, fp, lr}
+ 267              	.LCFI2:
+ 268              		.cfi_def_cfa_offset 36
+ 269              		.cfi_offset 4, -36
+ 270              		.cfi_offset 5, -32
+ 271              		.cfi_offset 6, -28
+ 272              		.cfi_offset 7, -24
+ 273              		.cfi_offset 8, -20
+ 274              		.cfi_offset 9, -16
+ 275              		.cfi_offset 10, -12
+ 276              		.cfi_offset 11, -8
+ 277              		.cfi_offset 14, -4
+ 278 0004 2DED048B 		vpush.64	{d8, d9}
+ 279              	.LCFI3:
+ 280              		.cfi_def_cfa_offset 52
+ARM GAS  /tmp/ccrQqemJ.s 			page 9
+
+
+ 281              		.cfi_offset 80, -52
+ 282              		.cfi_offset 81, -48
+ 283              		.cfi_offset 82, -44
+ 284              		.cfi_offset 83, -40
+ 140:src/led_player.c ****     if(time - prev_time > (1000 / 50)){
+ 285              		.loc 1 140 13 view .LVU77
+ 286 0008 DFF850B1 		ldr	fp, .L37+12
+ 137:src/led_player.c ****     static uint32_t prev_time = 0;
+ 287              		.loc 1 137 25 view .LVU78
+ 288 000c 87B0     		sub	sp, sp, #28
+ 289              	.LCFI4:
+ 290              		.cfi_def_cfa_offset 80
+ 139:src/led_player.c ****     uint32_t time = HAL_GetTick();
+ 291              		.loc 1 139 21 view .LVU79
+ 292 000e FFF7FEFF 		bl	HAL_GetTick
+ 293              	.LVL19:
+ 294              		.loc 1 140 13 view .LVU80
+ 295 0012 DBF80030 		ldr	r3, [fp]
+ 139:src/led_player.c ****     uint32_t time = HAL_GetTick();
+ 296              		.loc 1 139 21 view .LVU81
+ 297 0016 0190     		str	r0, [sp, #4]
+ 298              	.LVL20:
+ 299              		.loc 1 140 5 is_stmt 1 view .LVU82
+ 300              		.loc 1 140 13 is_stmt 0 view .LVU83
+ 301 0018 C31A     		subs	r3, r0, r3
+ 302              		.loc 1 140 7 view .LVU84
+ 303 001a 142B     		cmp	r3, #20
+ 304 001c 04D8     		bhi	.L33
+ 141:src/led_player.c ****         led_player_tick();
+ 142:src/led_player.c ****         prev_time = time;
+ 143:src/led_player.c ****     }
+ 144:src/led_player.c **** }
+ 305              		.loc 1 144 1 view .LVU85
+ 306 001e 07B0     		add	sp, sp, #28
+ 307              	.LCFI5:
+ 308              		.cfi_remember_state
+ 309              		.cfi_def_cfa_offset 52
+ 310              		@ sp needed
+ 311 0020 BDEC048B 		vldm	sp!, {d8-d9}
+ 312              	.LCFI6:
+ 313              		.cfi_restore 82
+ 314              		.cfi_restore 83
+ 315              		.cfi_restore 80
+ 316              		.cfi_restore 81
+ 317              		.cfi_def_cfa_offset 36
+ 318 0024 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 319              	.L33:
+ 320              	.LCFI7:
+ 321              		.cfi_restore_state
+ 322 0028 494C     		ldr	r4, .L37
+ 323 002a DFF83481 		ldr	r8, .L37+16
+ 324              	.LBB25:
+ 325              	.LBB26:
+ 326              	.LBB27:
+ 327              	.LBB28:
+ 114:src/led_player.c **** 
+ 328              		.loc 1 114 15 view .LVU86
+ARM GAS  /tmp/ccrQqemJ.s 			page 10
+
+
+ 329 002e 9FED498A 		vldr.32	s16, .L37+4
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 330              		.loc 1 130 27 view .LVU87
+ 331 0032 9FED499A 		vldr.32	s18, .L37+8
+ 332 0036 A4F12006 		sub	r6, r4, #32
+ 126:src/led_player.c ****         if(rgb[1] > 1)rgb[1] = 0;
+ 333              		.loc 1 126 11 view .LVU88
+ 334 003a F7EE008A 		vmov.f32	s17, #1.0e+0
+ 335 003e 04F5A269 		add	r9, r4, #1296
+ 336              	.LVL21:
+ 337              	.L24:
+ 112:src/led_player.c ****         void (*call)(float *, MIDINote *) = led_keys[i].lighter;
+ 338              		.loc 1 112 9 is_stmt 1 view .LVU89
+ 113:src/led_player.c ****         float rgb[3] = {0, 0, 0};
+ 339              		.loc 1 113 9 view .LVU90
+ 113:src/led_player.c ****         float rgb[3] = {0, 0, 0};
+ 340              		.loc 1 113 16 is_stmt 0 view .LVU91
+ 341 0042 356A     		ldr	r5, [r6, #32]
+ 342              	.LVL22:
+ 114:src/led_player.c **** 
+ 343              		.loc 1 114 9 is_stmt 1 view .LVU92
+ 114:src/led_player.c **** 
+ 344              		.loc 1 114 15 is_stmt 0 view .LVU93
+ 345 0044 8DED038A 		vstr.32	s16, [sp, #12]
+ 346 0048 8DED048A 		vstr.32	s16, [sp, #16]
+ 347 004c 8DED058A 		vstr.32	s16, [sp, #20]
+ 116:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 348              		.loc 1 116 9 is_stmt 1 view .LVU94
+ 349              	.LBB29:
+ 116:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 350              		.loc 1 116 13 view .LVU95
+ 351              	.LVL23:
+ 116:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 352              		.loc 1 116 30 discriminator 1 view .LVU96
+ 353              	.LBE29:
+ 114:src/led_player.c **** 
+ 354              		.loc 1 114 15 is_stmt 0 view .LVU97
+ 355 0050 B246     		mov	r10, r6
+ 356              	.LBB30:
+ 119:src/led_player.c ****             notes[j].tick++;
+ 357              		.loc 1 119 48 discriminator 1 view .LVU98
+ 358 0052 FF27     		movs	r7, #255
+ 359              	.LVL24:
+ 360              	.L18:
+ 117:src/led_player.c ****             call(rgb, notes + j);
+ 361              		.loc 1 117 13 is_stmt 1 view .LVU99
+ 118:src/led_player.c ****             if(notes[j].vel == 0)notes[j].note = 255;
+ 362              		.loc 1 118 13 view .LVU100
+ 117:src/led_player.c ****             call(rgb, notes + j);
+ 363              		.loc 1 117 15 is_stmt 0 view .LVU101
+ 364 0054 9AF80120 		ldrb	r2, [r10, #1]	@ zero_extendqisi2
+ 365 0058 FF2A     		cmp	r2, #255
+ 118:src/led_player.c ****             if(notes[j].vel == 0)notes[j].note = 255;
+ 366              		.loc 1 118 13 view .LVU102
+ 367 005a 5146     		mov	r1, r10
+ 368 005c 03A8     		add	r0, sp, #12
+ 117:src/led_player.c ****             call(rgb, notes + j);
+ARM GAS  /tmp/ccrQqemJ.s 			page 11
+
+
+ 369              		.loc 1 117 15 view .LVU103
+ 370 005e 0AD0     		beq	.L16
+ 118:src/led_player.c ****             if(notes[j].vel == 0)notes[j].note = 255;
+ 371              		.loc 1 118 13 view .LVU104
+ 372 0060 A847     		blx	r5
+ 373              	.LVL25:
+ 119:src/led_player.c ****             notes[j].tick++;
+ 374              		.loc 1 119 13 is_stmt 1 view .LVU105
+ 119:src/led_player.c ****             notes[j].tick++;
+ 375              		.loc 1 119 34 discriminator 1 view .LVU106
+ 120:src/led_player.c ****         }
+ 376              		.loc 1 120 13 view .LVU107
+ 119:src/led_player.c ****             notes[j].tick++;
+ 377              		.loc 1 119 15 is_stmt 0 view .LVU108
+ 378 0062 9AF80220 		ldrb	r2, [r10, #2]	@ zero_extendqisi2
+ 379 0066 0AB9     		cbnz	r2, .L17
+ 119:src/led_player.c ****             notes[j].tick++;
+ 380              		.loc 1 119 48 discriminator 1 view .LVU109
+ 381 0068 8AF80170 		strb	r7, [r10, #1]
+ 382              	.L17:
+ 120:src/led_player.c ****         }
+ 383              		.loc 1 120 26 view .LVU110
+ 384 006c DAF80420 		ldr	r2, [r10, #4]
+ 385 0070 0132     		adds	r2, r2, #1
+ 386 0072 CAF80420 		str	r2, [r10, #4]
+ 387              	.L16:
+ 116:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 388              		.loc 1 116 45 is_stmt 1 discriminator 2 view .LVU111
+ 389              	.LVL26:
+ 116:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 390              		.loc 1 116 30 discriminator 1 view .LVU112
+ 391 0076 0AF1080A 		add	r10, r10, #8
+ 392              	.LVL27:
+ 116:src/led_player.c ****             if(notes[j].note == 255)continue;
+ 393              		.loc 1 116 30 is_stmt 0 discriminator 1 view .LVU113
+ 394 007a 5445     		cmp	r4, r10
+ 395 007c EAD1     		bne	.L18
+ 396              	.LBE30:
+ 123:src/led_player.c ****         rgb[1] *= 0.25;
+ 397              		.loc 1 123 9 is_stmt 1 view .LVU114
+ 123:src/led_player.c ****         rgb[1] *= 0.25;
+ 398              		.loc 1 123 16 is_stmt 0 view .LVU115
+ 399 007e 9DED037A 		vldr.32	s14, [sp, #12]
+ 124:src/led_player.c ****         rgb[2] *= 0.25;
+ 400              		.loc 1 124 16 view .LVU116
+ 401 0082 DDED047A 		vldr.32	s15, [sp, #16]
+ 125:src/led_player.c ****         if(rgb[0] > 1)rgb[0] = 0;
+ 402              		.loc 1 125 16 view .LVU117
+ 403 0086 DDED056A 		vldr.32	s13, [sp, #20]
+ 123:src/led_player.c ****         rgb[1] *= 0.25;
+ 404              		.loc 1 123 16 view .LVU118
+ 405 008a B5EE006A 		vmov.f32	s12, #2.5e-1
+ 406 008e 27EE067A 		vmul.f32	s14, s14, s12
+ 124:src/led_player.c ****         rgb[2] *= 0.25;
+ 407              		.loc 1 124 9 is_stmt 1 view .LVU119
+ 124:src/led_player.c ****         rgb[2] *= 0.25;
+ 408              		.loc 1 124 16 is_stmt 0 view .LVU120
+ARM GAS  /tmp/ccrQqemJ.s 			page 12
+
+
+ 409 0092 67EE867A 		vmul.f32	s15, s15, s12
+ 125:src/led_player.c ****         if(rgb[0] > 1)rgb[0] = 0;
+ 410              		.loc 1 125 9 is_stmt 1 view .LVU121
+ 126:src/led_player.c ****         if(rgb[1] > 1)rgb[1] = 0;
+ 411              		.loc 1 126 11 is_stmt 0 view .LVU122
+ 412 0096 B4EEE87A 		vcmpe.f32	s14, s17
+ 413 009a F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 125:src/led_player.c ****         if(rgb[0] > 1)rgb[0] = 0;
+ 414              		.loc 1 125 16 view .LVU123
+ 415 009e 66EE866A 		vmul.f32	s13, s13, s12
+ 126:src/led_player.c ****         if(rgb[1] > 1)rgb[1] = 0;
+ 416              		.loc 1 126 9 is_stmt 1 view .LVU124
+ 126:src/led_player.c ****         if(rgb[1] > 1)rgb[1] = 0;
+ 417              		.loc 1 126 11 is_stmt 0 view .LVU125
+ 418 00a2 4BDD     		ble	.L34
+ 126:src/led_player.c ****         if(rgb[1] > 1)rgb[1] = 0;
+ 419              		.loc 1 126 30 discriminator 1 view .LVU126
+ 420 00a4 B0EE487A 		vmov.f32	s14, s16
+ 421 00a8 0022     		movs	r2, #0
+ 422              	.L19:
+ 127:src/led_player.c ****         if(rgb[2] > 1)rgb[2] = 0;
+ 423              		.loc 1 127 11 view .LVU127
+ 424 00aa F4EEE87A 		vcmpe.f32	s15, s17
+ 425 00ae F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 426 00b2 8DED037A 		vstr.32	s14, [sp, #12]
+ 127:src/led_player.c ****         if(rgb[2] > 1)rgb[2] = 0;
+ 427              		.loc 1 127 9 is_stmt 1 view .LVU128
+ 127:src/led_player.c ****         if(rgb[2] > 1)rgb[2] = 0;
+ 428              		.loc 1 127 11 is_stmt 0 view .LVU129
+ 429 00b6 38DD     		ble	.L35
+ 127:src/led_player.c ****         if(rgb[2] > 1)rgb[2] = 0;
+ 430              		.loc 1 127 30 discriminator 1 view .LVU130
+ 431 00b8 F0EE487A 		vmov.f32	s15, s16
+ 432 00bc 0023     		movs	r3, #0
+ 433              	.L20:
+ 128:src/led_player.c **** 
+ 434              		.loc 1 128 11 view .LVU131
+ 435 00be F4EEE86A 		vcmpe.f32	s13, s17
+ 436 00c2 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 437 00c6 CDED047A 		vstr.32	s15, [sp, #16]
+ 128:src/led_player.c **** 
+ 438              		.loc 1 128 9 is_stmt 1 view .LVU132
+ 128:src/led_player.c **** 
+ 439              		.loc 1 128 11 is_stmt 0 view .LVU133
+ 440 00ca 1CDD     		ble	.L36
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 441              		.loc 1 130 18 view .LVU134
+ 442 00cc 0021     		movs	r1, #0
+ 443 00ce 8DF80A10 		strb	r1, [sp, #10]
+ 444 00d2 8DF80820 		strb	r2, [sp, #8]
+ 445 00d6 8DF80930 		strb	r3, [sp, #9]
+ 131:src/led_player.c ****     }
+ 446              		.loc 1 131 9 view .LVU135
+ 447 00da 18F8011F 		ldrb	r1, [r8, #1]!	@ zero_extendqisi2
+ 448              	.LVL28:
+ 131:src/led_player.c ****     }
+ 449              		.loc 1 131 9 view .LVU136
+ARM GAS  /tmp/ccrQqemJ.s 			page 13
+
+
+ 450 00de 0298     		ldr	r0, [sp, #8]
+ 451 00e0 8DED058A 		vstr.32	s16, [sp, #20]
+ 452              	.L32:
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 453              		.loc 1 130 9 is_stmt 1 view .LVU137
+ 131:src/led_player.c ****     }
+ 454              		.loc 1 131 9 view .LVU138
+ 455              	.LBE28:
+ 111:src/led_player.c ****         MIDINote *notes = led_keys[i].notes;
+ 456              		.loc 1 111 26 is_stmt 0 discriminator 1 view .LVU139
+ 457 00e4 2434     		adds	r4, r4, #36
+ 458              	.LBB31:
+ 131:src/led_player.c ****     }
+ 459              		.loc 1 131 9 view .LVU140
+ 460 00e6 FFF7FEFF 		bl	leds_set
+ 461              	.LVL29:
+ 462              	.LBE31:
+ 111:src/led_player.c ****         MIDINote *notes = led_keys[i].notes;
+ 463              		.loc 1 111 41 is_stmt 1 discriminator 2 view .LVU141
+ 111:src/led_player.c ****         MIDINote *notes = led_keys[i].notes;
+ 464              		.loc 1 111 26 discriminator 1 view .LVU142
+ 465 00ea 4C45     		cmp	r4, r9
+ 466 00ec 06F12406 		add	r6, r6, #36
+ 467              	.LVL30:
+ 111:src/led_player.c ****         MIDINote *notes = led_keys[i].notes;
+ 468              		.loc 1 111 26 is_stmt 0 discriminator 1 view .LVU143
+ 469 00f0 A7D1     		bne	.L24
+ 470              	.LBE27:
+ 134:src/led_player.c **** }
+ 471              		.loc 1 134 5 is_stmt 1 view .LVU144
+ 472 00f2 FFF7FEFF 		bl	leds_show
+ 473              	.LVL31:
+ 134:src/led_player.c **** }
+ 474              		.loc 1 134 5 is_stmt 0 view .LVU145
+ 475              	.LBE26:
+ 476              	.LBE25:
+ 142:src/led_player.c ****     }
+ 477              		.loc 1 142 9 is_stmt 1 view .LVU146
+ 142:src/led_player.c ****     }
+ 478              		.loc 1 142 19 is_stmt 0 view .LVU147
+ 479 00f6 019B     		ldr	r3, [sp, #4]
+ 480 00f8 CBF80030 		str	r3, [fp]
+ 481              		.loc 1 144 1 view .LVU148
+ 482 00fc 07B0     		add	sp, sp, #28
+ 483              	.LCFI8:
+ 484              		.cfi_remember_state
+ 485              		.cfi_def_cfa_offset 52
+ 486              		@ sp needed
+ 487 00fe BDEC048B 		vldm	sp!, {d8-d9}
+ 488              	.LCFI9:
+ 489              		.cfi_restore 82
+ 490              		.cfi_restore 83
+ 491              		.cfi_restore 80
+ 492              		.cfi_restore 81
+ 493              		.cfi_def_cfa_offset 36
+ 494 0102 BDE8F08F 		pop	{r4, r5, r6, r7, r8, r9, r10, fp, pc}
+ 495              	.LVL32:
+ARM GAS  /tmp/ccrQqemJ.s 			page 14
+
+
+ 496              	.L36:
+ 497              	.LCFI10:
+ 498              		.cfi_restore_state
+ 499              	.LBB35:
+ 500              	.LBB34:
+ 501              	.LBB33:
+ 502              	.LBB32:
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 503              		.loc 1 130 55 view .LVU149
+ 504 0106 66EE897A 		vmul.f32	s15, s13, s18
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 505              		.loc 1 130 18 view .LVU150
+ 506 010a 8DF80820 		strb	r2, [sp, #8]
+ 507 010e FCEEE77A 		vcvt.u32.f32	s15, s15
+ 508 0112 8DF80930 		strb	r3, [sp, #9]
+ 509 0116 17EE902A 		vmov	r2, s15	@ int
+ 510 011a 8DF80A20 		strb	r2, [sp, #10]
+ 131:src/led_player.c ****     }
+ 511              		.loc 1 131 9 view .LVU151
+ 512 011e 18F8011F 		ldrb	r1, [r8, #1]!	@ zero_extendqisi2
+ 513              	.LVL33:
+ 131:src/led_player.c ****     }
+ 514              		.loc 1 131 9 view .LVU152
+ 515 0122 0298     		ldr	r0, [sp, #8]
+ 516 0124 CDED056A 		vstr.32	s13, [sp, #20]
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 517              		.loc 1 130 9 is_stmt 1 view .LVU153
+ 131:src/led_player.c ****     }
+ 518              		.loc 1 131 9 view .LVU154
+ 519 0128 DCE7     		b	.L32
+ 520              	.LVL34:
+ 521              	.L35:
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 522              		.loc 1 130 41 is_stmt 0 view .LVU155
+ 523 012a 27EE897A 		vmul.f32	s14, s15, s18
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 524              		.loc 1 130 18 view .LVU156
+ 525 012e BCEEC77A 		vcvt.u32.f32	s14, s14
+ 526 0132 8DED007A 		vstr.32	s14, [sp]	@ int
+ 527 0136 9DF80030 		ldrb	r3, [sp]	@ zero_extendqisi2
+ 528 013a C0E7     		b	.L20
+ 529              	.L34:
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 530              		.loc 1 130 27 view .LVU157
+ 531 013c 27EE096A 		vmul.f32	s12, s14, s18
+ 130:src/led_player.c ****         leds_set(c, led_mapping[i]);
+ 532              		.loc 1 130 18 view .LVU158
+ 533 0140 BCEEC66A 		vcvt.u32.f32	s12, s12
+ 534 0144 8DED006A 		vstr.32	s12, [sp]	@ int
+ 535 0148 9DF80020 		ldrb	r2, [sp]	@ zero_extendqisi2
+ 536 014c ADE7     		b	.L19
+ 537              	.L38:
+ 538 014e 00BF     		.align	2
+ 539              	.L37:
+ 540 0150 20000000 		.word	led_keys+32
+ 541 0154 00000000 		.word	0
+ 542 0158 00004843 		.word	1128792064
+ARM GAS  /tmp/ccrQqemJ.s 			page 15
+
+
+ 543 015c 00000000 		.word	prev_time.0
+ 544 0160 FFFFFFFF 		.word	led_mapping-1
+ 545              	.LBE32:
+ 546              	.LBE33:
+ 547              	.LBE34:
+ 548              	.LBE35:
+ 549              		.cfi_endproc
+ 550              	.LFE140:
+ 552              		.section	.text.led_player_note_on,"ax",%progbits
+ 553              		.align	1
+ 554              		.p2align 2,,3
+ 555              		.global	led_player_note_on
+ 556              		.syntax unified
+ 557              		.thumb
+ 558              		.thumb_func
+ 560              	led_player_note_on:
+ 561              	.LVL35:
+ 562              	.LFB141:
+ 145:src/led_player.c **** 
+ 146:src/led_player.c **** void led_player_note_on(uint8_t channel, uint8_t note, uint8_t vel){
+ 563              		.loc 1 146 68 is_stmt 1 view -0
+ 564              		.cfi_startproc
+ 565              		@ args = 0, pretend = 0, frame = 0
+ 566              		@ frame_needed = 0, uses_anonymous_args = 0
+ 567              		@ link register save eliminated.
+ 147:src/led_player.c ****     if(channel == 0x09)return;
+ 568              		.loc 1 147 5 view .LVU160
+ 569              		.loc 1 147 7 is_stmt 0 view .LVU161
+ 570 0000 0928     		cmp	r0, #9
+ 571 0002 26D0     		beq	.L53
+ 148:src/led_player.c ****     MIDINote *notes = led_keys[get_index(note)].notes;
+ 572              		.loc 1 148 5 is_stmt 1 view .LVU162
+ 573              	.LVL36:
+ 574              	.LBB36:
+ 575              	.LBI36:
+  48:src/led_player.c ****     note -= 60;
+ 576              		.loc 1 48 23 view .LVU163
+ 577              	.LBB37:
+  49:src/led_player.c ****     while(note < 0){
+ 578              		.loc 1 49 5 view .LVU164
+  50:src/led_player.c ****         note += LED_COUNT;
+ 579              		.loc 1 50 5 view .LVU165
+  50:src/led_player.c ****         note += LED_COUNT;
+ 580              		.loc 1 50 16 view .LVU166
+ 581 0004 B1F13C03 		subs	r3, r1, #60
+ 582              	.LVL37:
+  50:src/led_player.c ****         note += LED_COUNT;
+ 583              		.loc 1 50 16 is_stmt 0 view .LVU167
+ 584              	.LBE37:
+ 585              	.LBE36:
+ 146:src/led_player.c ****     if(channel == 0x09)return;
+ 586              		.loc 1 146 68 view .LVU168
+ 587 0008 10B4     		push	{r4}
+ 588              	.LCFI11:
+ 589              		.cfi_def_cfa_offset 4
+ 590              		.cfi_offset 4, -4
+ 591              	.LBB40:
+ARM GAS  /tmp/ccrQqemJ.s 			page 16
+
+
+ 592              	.LBB38:
+  50:src/led_player.c ****         note += LED_COUNT;
+ 593              		.loc 1 50 16 view .LVU169
+ 594 000a 04D5     		bpl	.L41
+  51:src/led_player.c ****     }
+ 595              		.loc 1 51 9 is_stmt 1 view .LVU170
+ 596              	.LVL38:
+  50:src/led_player.c ****         note += LED_COUNT;
+ 597              		.loc 1 50 16 view .LVU171
+ 598 000c B1F11803 		subs	r3, r1, #24
+ 599              	.LVL39:
+  51:src/led_player.c ****     }
+ 600              		.loc 1 51 9 view .LVU172
+  51:src/led_player.c ****     }
+ 601              		.loc 1 51 14 is_stmt 0 view .LVU173
+ 602 0010 48BF     		it	mi
+ 603 0012 01F10C03 		addmi	r3, r1, #12
+  50:src/led_player.c ****         note += LED_COUNT;
+ 604              		.loc 1 50 16 is_stmt 1 view .LVU174
+ 605              	.LVL40:
+ 606              	.L41:
+  53:src/led_player.c **** } 
+ 607              		.loc 1 53 5 view .LVU175
+  53:src/led_player.c **** } 
+ 608              		.loc 1 53 17 is_stmt 0 view .LVU176
+ 609 0016 144C     		ldr	r4, .L57
+ 610 0018 A4FB034C 		umull	r4, ip, r4, r3
+ 611 001c 4FEADC0C 		lsr	ip, ip, #3
+ 612 0020 0CEBCC0C 		add	ip, ip, ip, lsl #3
+ 613              	.LBE38:
+ 614              	.LBE40:
+ 615              		.loc 1 148 15 discriminator 1 view .LVU177
+ 616 0024 114C     		ldr	r4, .L57+4
+ 617              	.LBB41:
+ 618              	.LBB39:
+  53:src/led_player.c **** } 
+ 619              		.loc 1 53 17 view .LVU178
+ 620 0026 A3EB8C03 		sub	r3, r3, ip, lsl #2
+ 621              	.LBE39:
+ 622              	.LBE41:
+ 623              		.loc 1 148 15 discriminator 1 view .LVU179
+ 624 002a 03EBC303 		add	r3, r3, r3, lsl #3
+ 625 002e 04EB8303 		add	r3, r4, r3, lsl #2
+ 626              	.LVL41:
+ 149:src/led_player.c ****     for(uint8_t i = 0; i != MAX_NOTES; i++){
+ 627              		.loc 1 149 5 is_stmt 1 view .LVU180
+ 628              	.LBB42:
+ 629              		.loc 1 149 9 view .LVU181
+ 630              		.loc 1 149 26 discriminator 1 view .LVU182
+ 150:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 631              		.loc 1 150 9 view .LVU183
+ 632              		.loc 1 150 11 is_stmt 0 view .LVU184
+ 633 0032 5C78     		ldrb	r4, [r3, #1]	@ zero_extendqisi2
+ 634 0034 FF2C     		cmp	r4, #255
+ 635 0036 07D1     		bne	.L56
+ 636              	.LVL42:
+ 637              	.L43:
+ARM GAS  /tmp/ccrQqemJ.s 			page 17
+
+
+ 151:src/led_player.c ****         notes[i].tick = 0;
+ 638              		.loc 1 151 9 is_stmt 1 view .LVU185
+ 639              		.loc 1 151 23 is_stmt 0 view .LVU186
+ 640 0038 0024     		movs	r4, #0
+ 641 003a 5C60     		str	r4, [r3, #4]
+ 152:src/led_player.c ****         notes[i].note = note;
+ 642              		.loc 1 152 9 is_stmt 1 view .LVU187
+ 643              		.loc 1 152 23 is_stmt 0 view .LVU188
+ 644 003c 5970     		strb	r1, [r3, #1]
+ 153:src/led_player.c ****         notes[i].channel = channel;
+ 645              		.loc 1 153 9 is_stmt 1 view .LVU189
+ 646              		.loc 1 153 26 is_stmt 0 view .LVU190
+ 647 003e 1870     		strb	r0, [r3]
+ 154:src/led_player.c ****         notes[i].vel = vel;
+ 648              		.loc 1 154 9 is_stmt 1 view .LVU191
+ 649              		.loc 1 154 22 is_stmt 0 view .LVU192
+ 650 0040 9A70     		strb	r2, [r3, #2]
+ 155:src/led_player.c ****         break;
+ 651              		.loc 1 155 9 is_stmt 1 view .LVU193
+ 652              	.L39:
+ 653              		.loc 1 155 9 is_stmt 0 view .LVU194
+ 654              	.LBE42:
+ 156:src/led_player.c ****     }
+ 157:src/led_player.c **** }
+ 655              		.loc 1 157 1 view .LVU195
+ 656 0042 5DF8044B 		ldr	r4, [sp], #4
+ 657              	.LCFI12:
+ 658              		.cfi_remember_state
+ 659              		.cfi_restore 4
+ 660              		.cfi_def_cfa_offset 0
+ 661 0046 7047     		bx	lr
+ 662              	.LVL43:
+ 663              	.L56:
+ 664              	.LCFI13:
+ 665              		.cfi_restore_state
+ 666              	.LBB43:
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 667              		.loc 1 150 33 is_stmt 1 discriminator 1 view .LVU196
+ 149:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 668              		.loc 1 149 41 discriminator 2 view .LVU197
+ 149:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 669              		.loc 1 149 26 discriminator 1 view .LVU198
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 670              		.loc 1 150 9 view .LVU199
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 671              		.loc 1 150 11 is_stmt 0 view .LVU200
+ 672 0048 5C7A     		ldrb	r4, [r3, #9]	@ zero_extendqisi2
+ 673 004a FF2C     		cmp	r4, #255
+ 674 004c 02D1     		bne	.L44
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 675              		.loc 1 150 17 view .LVU201
+ 676 004e 0833     		adds	r3, r3, #8
+ 677              	.LVL44:
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 678              		.loc 1 150 17 view .LVU202
+ 679 0050 F2E7     		b	.L43
+ 680              	.LVL45:
+ARM GAS  /tmp/ccrQqemJ.s 			page 18
+
+
+ 681              	.L53:
+ 682              	.LCFI14:
+ 683              		.cfi_def_cfa_offset 0
+ 684              		.cfi_restore 4
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 685              		.loc 1 150 17 view .LVU203
+ 686 0052 7047     		bx	lr
+ 687              	.LVL46:
+ 688              	.L44:
+ 689              	.LCFI15:
+ 690              		.cfi_def_cfa_offset 4
+ 691              		.cfi_offset 4, -4
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 692              		.loc 1 150 33 is_stmt 1 discriminator 1 view .LVU204
+ 149:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 693              		.loc 1 149 41 discriminator 2 view .LVU205
+ 149:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 694              		.loc 1 149 26 discriminator 1 view .LVU206
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 695              		.loc 1 150 9 view .LVU207
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 696              		.loc 1 150 11 is_stmt 0 view .LVU208
+ 697 0054 5C7C     		ldrb	r4, [r3, #17]	@ zero_extendqisi2
+ 698 0056 FF2C     		cmp	r4, #255
+ 699 0058 01D1     		bne	.L45
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 700              		.loc 1 150 17 view .LVU209
+ 701 005a 1033     		adds	r3, r3, #16
+ 702              	.LVL47:
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 703              		.loc 1 150 17 view .LVU210
+ 704 005c ECE7     		b	.L43
+ 705              	.LVL48:
+ 706              	.L45:
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 707              		.loc 1 150 33 is_stmt 1 discriminator 1 view .LVU211
+ 149:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 708              		.loc 1 149 41 discriminator 2 view .LVU212
+ 149:src/led_player.c ****         if(notes[i].note != 255)continue;
+ 709              		.loc 1 149 26 discriminator 1 view .LVU213
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 710              		.loc 1 150 9 view .LVU214
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 711              		.loc 1 150 11 is_stmt 0 view .LVU215
+ 712 005e 5C7E     		ldrb	r4, [r3, #25]	@ zero_extendqisi2
+ 713 0060 FF2C     		cmp	r4, #255
+ 714 0062 EED1     		bne	.L39
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 715              		.loc 1 150 17 view .LVU216
+ 716 0064 1833     		adds	r3, r3, #24
+ 717              	.LVL49:
+ 150:src/led_player.c ****         notes[i].tick = 0;
+ 718              		.loc 1 150 17 view .LVU217
+ 719 0066 E7E7     		b	.L43
+ 720              	.L58:
+ 721              		.align	2
+ 722              	.L57:
+ARM GAS  /tmp/ccrQqemJ.s 			page 19
+
+
+ 723 0068 398EE338 		.word	954437177
+ 724 006c 00000000 		.word	led_keys
+ 725              	.LBE43:
+ 726              		.cfi_endproc
+ 727              	.LFE141:
+ 729              		.section	.text.led_player_note_off,"ax",%progbits
+ 730              		.align	1
+ 731              		.p2align 2,,3
+ 732              		.global	led_player_note_off
+ 733              		.syntax unified
+ 734              		.thumb
+ 735              		.thumb_func
+ 737              	led_player_note_off:
+ 738              	.LVL50:
+ 739              	.LFB142:
+ 158:src/led_player.c **** 
+ 159:src/led_player.c **** void led_player_note_off(uint8_t channel, uint8_t note){
+ 740              		.loc 1 159 56 is_stmt 1 view -0
+ 741              		.cfi_startproc
+ 742              		@ args = 0, pretend = 0, frame = 0
+ 743              		@ frame_needed = 0, uses_anonymous_args = 0
+ 744              		@ link register save eliminated.
+ 160:src/led_player.c ****     if(channel == 0x09)return;
+ 745              		.loc 1 160 5 view .LVU219
+ 746              		.loc 1 160 7 is_stmt 0 view .LVU220
+ 747 0000 0928     		cmp	r0, #9
+ 748 0002 43D0     		beq	.L83
+ 161:src/led_player.c ****     MIDINote *notes = led_keys[get_index(note)].notes;
+ 749              		.loc 1 161 5 is_stmt 1 view .LVU221
+ 750              	.LVL51:
+ 751              	.LBB44:
+ 752              	.LBI44:
+  48:src/led_player.c ****     note -= 60;
+ 753              		.loc 1 48 23 view .LVU222
+ 754              	.LBB45:
+  49:src/led_player.c ****     while(note < 0){
+ 755              		.loc 1 49 5 view .LVU223
+  50:src/led_player.c ****         note += LED_COUNT;
+ 756              		.loc 1 50 5 view .LVU224
+  50:src/led_player.c ****         note += LED_COUNT;
+ 757              		.loc 1 50 16 view .LVU225
+ 758 0004 B1F13C03 		subs	r3, r1, #60
+ 759              	.LVL52:
+  50:src/led_player.c ****         note += LED_COUNT;
+ 760              		.loc 1 50 16 is_stmt 0 view .LVU226
+ 761              	.LBE45:
+ 762              	.LBE44:
+ 159:src/led_player.c ****     if(channel == 0x09)return;
+ 763              		.loc 1 159 56 view .LVU227
+ 764 0008 10B4     		push	{r4}
+ 765              	.LCFI16:
+ 766              		.cfi_def_cfa_offset 4
+ 767              		.cfi_offset 4, -4
+ 768              	.LBB47:
+ 769              	.LBB46:
+  50:src/led_player.c ****         note += LED_COUNT;
+ 770              		.loc 1 50 16 view .LVU228
+ARM GAS  /tmp/ccrQqemJ.s 			page 20
+
+
+ 771 000a 04D5     		bpl	.L61
+  51:src/led_player.c ****     }
+ 772              		.loc 1 51 9 is_stmt 1 view .LVU229
+ 773              	.LVL53:
+  50:src/led_player.c ****         note += LED_COUNT;
+ 774              		.loc 1 50 16 view .LVU230
+ 775 000c B1F11803 		subs	r3, r1, #24
+ 776              	.LVL54:
+  51:src/led_player.c ****     }
+ 777              		.loc 1 51 9 view .LVU231
+  51:src/led_player.c ****     }
+ 778              		.loc 1 51 14 is_stmt 0 view .LVU232
+ 779 0010 48BF     		it	mi
+ 780 0012 01F10C03 		addmi	r3, r1, #12
+  50:src/led_player.c ****         note += LED_COUNT;
+ 781              		.loc 1 50 16 is_stmt 1 view .LVU233
+ 782              	.LVL55:
+ 783              	.L61:
+  53:src/led_player.c **** } 
+ 784              		.loc 1 53 5 view .LVU234
+  53:src/led_player.c **** } 
+ 785              		.loc 1 53 17 is_stmt 0 view .LVU235
+ 786 0016 1E4A     		ldr	r2, .L86
+ 787 0018 A2FB0342 		umull	r4, r2, r2, r3
+ 788 001c D208     		lsrs	r2, r2, #3
+ 789 001e 02EBC202 		add	r2, r2, r2, lsl #3
+ 790 0022 A3EB8203 		sub	r3, r3, r2, lsl #2
+ 791              	.LBE46:
+ 792              	.LBE47:
+ 793              		.loc 1 161 15 discriminator 1 view .LVU236
+ 794 0026 1B4C     		ldr	r4, .L86+4
+ 795 0028 03EBC303 		add	r3, r3, r3, lsl #3
+ 796 002c 04EB8302 		add	r2, r4, r3, lsl #2
+ 797              	.LVL56:
+ 162:src/led_player.c ****     for(uint8_t i = 0; i != MAX_NOTES; i++){
+ 798              		.loc 1 162 5 is_stmt 1 view .LVU237
+ 799              	.LBB48:
+ 800              		.loc 1 162 9 view .LVU238
+ 801              		.loc 1 162 26 discriminator 1 view .LVU239
+ 163:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 802              		.loc 1 163 9 view .LVU240
+ 803              	.LBE48:
+ 161:src/led_player.c ****     for(uint8_t i = 0; i != MAX_NOTES; i++){
+ 804              		.loc 1 161 15 is_stmt 0 discriminator 1 view .LVU241
+ 805 0030 9B00     		lsls	r3, r3, #2
+ 806              	.LBB49:
+ 807              		.loc 1 163 20 view .LVU242
+ 808 0032 92F801C0 		ldrb	ip, [r2, #1]	@ zero_extendqisi2
+ 809              		.loc 1 163 11 view .LVU243
+ 810 0036 BCF1FF0F 		cmp	ip, #255
+ 811 003a 06D0     		beq	.L63
+ 164:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 812              		.loc 1 164 9 is_stmt 1 view .LVU244
+ 813              		.loc 1 164 11 is_stmt 0 view .LVU245
+ 814 003c E35C     		ldrb	r3, [r4, r3]	@ zero_extendqisi2
+ 815 003e 8342     		cmp	r3, r0
+ 816 0040 03D1     		bne	.L63
+ARM GAS  /tmp/ccrQqemJ.s 			page 21
+
+
+ 817              		.loc 1 164 40 discriminator 2 view .LVU246
+ 818 0042 6145     		cmp	r1, ip
+ 165:src/led_player.c ****         notes[i].vel = 0;
+ 819              		.loc 1 165 9 is_stmt 1 view .LVU247
+ 820              		.loc 1 165 22 is_stmt 0 view .LVU248
+ 821 0044 04BF     		itt	eq
+ 822 0046 0023     		moveq	r3, #0
+ 823 0048 9370     		strbeq	r3, [r2, #2]
+ 824              	.L63:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 825              		.loc 1 162 41 is_stmt 1 discriminator 2 view .LVU249
+ 826              	.LVL57:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 827              		.loc 1 162 26 discriminator 1 view .LVU250
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 828              		.loc 1 163 9 view .LVU251
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 829              		.loc 1 163 20 is_stmt 0 view .LVU252
+ 830 004a 537A     		ldrb	r3, [r2, #9]	@ zero_extendqisi2
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 831              		.loc 1 163 11 view .LVU253
+ 832 004c FF2B     		cmp	r3, #255
+ 833 004e 06D0     		beq	.L64
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 834              		.loc 1 164 9 is_stmt 1 view .LVU254
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 835              		.loc 1 164 11 is_stmt 0 view .LVU255
+ 836 0050 147A     		ldrb	r4, [r2, #8]	@ zero_extendqisi2
+ 837 0052 8442     		cmp	r4, r0
+ 838 0054 03D1     		bne	.L64
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 839              		.loc 1 164 40 discriminator 2 view .LVU256
+ 840 0056 9942     		cmp	r1, r3
+ 841              		.loc 1 165 9 is_stmt 1 view .LVU257
+ 842              		.loc 1 165 22 is_stmt 0 view .LVU258
+ 843 0058 04BF     		itt	eq
+ 844 005a 0023     		moveq	r3, #0
+ 845 005c 9372     		strbeq	r3, [r2, #10]
+ 846              	.L64:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 847              		.loc 1 162 41 is_stmt 1 discriminator 2 view .LVU259
+ 848              	.LVL58:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 849              		.loc 1 162 26 discriminator 1 view .LVU260
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 850              		.loc 1 163 9 view .LVU261
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 851              		.loc 1 163 20 is_stmt 0 view .LVU262
+ 852 005e 537C     		ldrb	r3, [r2, #17]	@ zero_extendqisi2
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 853              		.loc 1 163 11 view .LVU263
+ 854 0060 FF2B     		cmp	r3, #255
+ 855 0062 06D0     		beq	.L65
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 856              		.loc 1 164 9 is_stmt 1 view .LVU264
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 857              		.loc 1 164 11 is_stmt 0 view .LVU265
+ARM GAS  /tmp/ccrQqemJ.s 			page 22
+
+
+ 858 0064 147C     		ldrb	r4, [r2, #16]	@ zero_extendqisi2
+ 859 0066 8442     		cmp	r4, r0
+ 860 0068 03D1     		bne	.L65
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 861              		.loc 1 164 40 discriminator 2 view .LVU266
+ 862 006a 9942     		cmp	r1, r3
+ 863              		.loc 1 165 9 is_stmt 1 view .LVU267
+ 864              		.loc 1 165 22 is_stmt 0 view .LVU268
+ 865 006c 04BF     		itt	eq
+ 866 006e 0023     		moveq	r3, #0
+ 867 0070 9374     		strbeq	r3, [r2, #18]
+ 868              	.L65:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 869              		.loc 1 162 41 is_stmt 1 discriminator 2 view .LVU269
+ 870              	.LVL59:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 871              		.loc 1 162 26 discriminator 1 view .LVU270
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 872              		.loc 1 163 9 view .LVU271
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 873              		.loc 1 163 20 is_stmt 0 view .LVU272
+ 874 0072 537E     		ldrb	r3, [r2, #25]	@ zero_extendqisi2
+ 163:src/led_player.c ****         if(notes[i].channel != channel || notes[i].note != note)continue;
+ 875              		.loc 1 163 11 view .LVU273
+ 876 0074 FF2B     		cmp	r3, #255
+ 877 0076 06D0     		beq	.L59
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 878              		.loc 1 164 9 is_stmt 1 view .LVU274
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 879              		.loc 1 164 11 is_stmt 0 view .LVU275
+ 880 0078 147E     		ldrb	r4, [r2, #24]	@ zero_extendqisi2
+ 881 007a 8442     		cmp	r4, r0
+ 882 007c 03D1     		bne	.L59
+ 164:src/led_player.c ****         notes[i].vel = 0;
+ 883              		.loc 1 164 40 discriminator 2 view .LVU276
+ 884 007e 8B42     		cmp	r3, r1
+ 885              		.loc 1 165 9 is_stmt 1 view .LVU277
+ 886              		.loc 1 165 22 is_stmt 0 view .LVU278
+ 887 0080 04BF     		itt	eq
+ 888 0082 0023     		moveq	r3, #0
+ 889 0084 9376     		strbeq	r3, [r2, #26]
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 890              		.loc 1 162 41 is_stmt 1 discriminator 2 view .LVU279
+ 891              	.LVL60:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 892              		.loc 1 162 26 discriminator 1 view .LVU280
+ 893              	.L59:
+ 162:src/led_player.c ****         if(notes[i].note == 255)continue;
+ 894              		.loc 1 162 26 is_stmt 0 discriminator 1 view .LVU281
+ 895              	.LBE49:
+ 166:src/led_player.c ****     }
+ 167:src/led_player.c **** }
+ 896              		.loc 1 167 1 view .LVU282
+ 897 0086 5DF8044B 		ldr	r4, [sp], #4
+ 898              	.LCFI17:
+ 899              		.cfi_restore 4
+ 900              		.cfi_def_cfa_offset 0
+ARM GAS  /tmp/ccrQqemJ.s 			page 23
+
+
+ 901 008a 7047     		bx	lr
+ 902              	.LVL61:
+ 903              	.L83:
+ 904              		.loc 1 167 1 view .LVU283
+ 905 008c 7047     		bx	lr
+ 906              	.L87:
+ 907 008e 00BF     		.align	2
+ 908              	.L86:
+ 909 0090 398EE338 		.word	954437177
+ 910 0094 00000000 		.word	led_keys
+ 911              		.cfi_endproc
+ 912              	.LFE142:
+ 914              		.section	.text.led_player_test,"ax",%progbits
+ 915              		.align	1
+ 916              		.p2align 2,,3
+ 917              		.global	led_player_test
+ 918              		.syntax unified
+ 919              		.thumb
+ 920              		.thumb_func
+ 922              	led_player_test:
+ 923              	.LFB143:
+ 168:src/led_player.c **** 
+ 169:src/led_player.c **** void led_player_test(){
+ 924              		.loc 1 169 23 is_stmt 1 view -0
+ 925              		.cfi_startproc
+ 926              		@ args = 0, pretend = 0, frame = 8
+ 927              		@ frame_needed = 0, uses_anonymous_args = 0
+ 170:src/led_player.c ****     int idx = 0;
+ 928              		.loc 1 170 5 view .LVU285
+ 929              	.LVL62:
+ 169:src/led_player.c ****     int idx = 0;
+ 930              		.loc 1 169 23 is_stmt 0 view .LVU286
+ 931 0000 70B5     		push	{r4, r5, r6, lr}
+ 932              	.LCFI18:
+ 933              		.cfi_def_cfa_offset 16
+ 934              		.cfi_offset 4, -16
+ 935              		.cfi_offset 5, -12
+ 936              		.cfi_offset 6, -8
+ 937              		.cfi_offset 14, -4
+ 938 0002 164E     		ldr	r6, .L91
+ 171:src/led_player.c ****     while(1){
+ 172:src/led_player.c ****         leds_clear();
+ 173:src/led_player.c ****         leds_set(leds_color(0.5, 0.5, 0.5), led_mapping[idx]);
+ 174:src/led_player.c ****         leds_show();
+ 175:src/led_player.c ****         HAL_Delay(500);
+ 176:src/led_player.c ****         idx++;
+ 177:src/led_player.c ****         idx %= 12;//LED_COUNT;
+ 939              		.loc 1 177 13 discriminator 1 view .LVU287
+ 940 0004 164D     		ldr	r5, .L91+4
+ 169:src/led_player.c ****     int idx = 0;
+ 941              		.loc 1 169 23 view .LVU288
+ 942 0006 82B0     		sub	sp, sp, #8
+ 943              	.LCFI19:
+ 944              		.cfi_def_cfa_offset 24
+ 170:src/led_player.c ****     while(1){
+ 945              		.loc 1 170 9 view .LVU289
+ 946 0008 0024     		movs	r4, #0
+ARM GAS  /tmp/ccrQqemJ.s 			page 24
+
+
+ 947              	.LVL63:
+ 948              	.L89:
+ 171:src/led_player.c ****     while(1){
+ 949              		.loc 1 171 5 is_stmt 1 view .LVU290
+ 172:src/led_player.c ****         leds_set(leds_color(0.5, 0.5, 0.5), led_mapping[idx]);
+ 950              		.loc 1 172 9 view .LVU291
+ 951 000a FFF7FEFF 		bl	leds_clear
+ 952              	.LVL64:
+ 173:src/led_player.c ****         leds_show();
+ 953              		.loc 1 173 9 view .LVU292
+ 954 000e B6EE001A 		vmov.f32	s2, #5.0e-1
+ 955 0012 F0EE410A 		vmov.f32	s1, s2
+ 956 0016 B0EE410A 		vmov.f32	s0, s2
+ 957 001a FFF7FEFF 		bl	leds_color
+ 958              	.LVL65:
+ 959 001e C0F30722 		ubfx	r2, r0, #8, #8
+ 960 0022 C0F30743 		ubfx	r3, r0, #16, #8
+ 961 0026 8DF80520 		strb	r2, [sp, #5]
+ 962 002a 8DF80630 		strb	r3, [sp, #6]
+ 963 002e 8DF80400 		strb	r0, [sp, #4]
+ 173:src/led_player.c ****         leds_show();
+ 964              		.loc 1 173 9 is_stmt 0 discriminator 1 view .LVU293
+ 965 0032 315D     		ldrb	r1, [r6, r4]	@ zero_extendqisi2
+ 966 0034 0198     		ldr	r0, [sp, #4]
+ 967 0036 FFF7FEFF 		bl	leds_set
+ 968              	.LVL66:
+ 174:src/led_player.c ****         HAL_Delay(500);
+ 969              		.loc 1 174 9 is_stmt 1 view .LVU294
+ 970 003a FFF7FEFF 		bl	leds_show
+ 971              	.LVL67:
+ 175:src/led_player.c ****         idx++;
+ 972              		.loc 1 175 9 view .LVU295
+ 973 003e 4FF4FA70 		mov	r0, #500
+ 974 0042 FFF7FEFF 		bl	HAL_Delay
+ 975              	.LVL68:
+ 176:src/led_player.c ****         idx %= 12;//LED_COUNT;
+ 976              		.loc 1 176 9 view .LVU296
+ 176:src/led_player.c ****         idx %= 12;//LED_COUNT;
+ 977              		.loc 1 176 12 is_stmt 0 view .LVU297
+ 978 0046 631C     		adds	r3, r4, #1
+ 979              	.LVL69:
+ 980              		.loc 1 177 9 is_stmt 1 discriminator 1 view .LVU298
+ 981              		.loc 1 177 13 is_stmt 0 discriminator 1 view .LVU299
+ 982 0048 85FB0312 		smull	r1, r2, r5, r3
+ 983 004c DC17     		asrs	r4, r3, #31
+ 984 004e C4EB6204 		rsb	r4, r4, r2, asr #1
+ 985 0052 04EB4404 		add	r4, r4, r4, lsl #1
+ 986 0056 A3EB8404 		sub	r4, r3, r4, lsl #2
+ 987              	.LVL70:
+ 171:src/led_player.c ****         leds_clear();
+ 988              		.loc 1 171 10 is_stmt 1 view .LVU300
+ 989 005a D6E7     		b	.L89
+ 990              	.L92:
+ 991              		.align	2
+ 992              	.L91:
+ 993 005c 00000000 		.word	led_mapping
+ 994 0060 ABAAAA2A 		.word	715827883
+ARM GAS  /tmp/ccrQqemJ.s 			page 25
+
+
+ 995              		.cfi_endproc
+ 996              	.LFE143:
+ 998              		.section	.text.led_player_handle_cc,"ax",%progbits
+ 999              		.align	1
+ 1000              		.p2align 2,,3
+ 1001              		.global	led_player_handle_cc
+ 1002              		.syntax unified
+ 1003              		.thumb
+ 1004              		.thumb_func
+ 1006              	led_player_handle_cc:
+ 1007              	.LVL71:
+ 1008              	.LFB144:
+ 178:src/led_player.c ****     }
+ 179:src/led_player.c **** }
+ 180:src/led_player.c **** 
+ 181:src/led_player.c **** void led_player_handle_cc(uint8_t channel, uint8_t cmd, uint8_t data){
+ 1009              		.loc 1 181 70 view -0
+ 1010              		.cfi_startproc
+ 1011              		@ args = 0, pretend = 0, frame = 0
+ 1012              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1013              		@ link register save eliminated.
+ 182:src/led_player.c ****     switch(cmd){
+ 1014              		.loc 1 182 5 view .LVU302
+ 1015 0000 7829     		cmp	r1, #120
+ 1016 0002 02D0     		beq	.L94
+ 1017 0004 7B29     		cmp	r1, #123
+ 1018 0006 00D0     		beq	.L94
+ 183:src/led_player.c ****         //Mute sounds
+ 184:src/led_player.c ****         case 120:
+ 185:src/led_player.c ****         case 123:
+ 186:src/led_player.c ****             led_player_silence_chan(channel);
+ 187:src/led_player.c ****             break;
+ 188:src/led_player.c ****     }
+ 189:src/led_player.c **** }
+ 1019              		.loc 1 189 1 is_stmt 0 view .LVU303
+ 1020 0008 7047     		bx	lr
+ 1021              	.L94:
+ 1022 000a 124B     		ldr	r3, .L117
+ 1023              	.LBB54:
+ 1024              	.LBB55:
+ 1025              	.LBB56:
+  61:src/led_player.c ****         }
+ 1026              		.loc 1 61 38 view .LVU304
+ 1027 000c 0021     		movs	r1, #0
+ 1028              	.LVL72:
+  61:src/led_player.c ****         }
+ 1029              		.loc 1 61 38 view .LVU305
+ 1030 000e 03F5A26C 		add	ip, r3, #1296
+ 1031              	.LVL73:
+ 1032              	.L100:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1033              		.loc 1 58 30 is_stmt 1 discriminator 1 view .LVU306
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1034              		.loc 1 59 13 view .LVU307
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1035              		.loc 1 59 15 is_stmt 0 view .LVU308
+ 1036 0012 5A78     		ldrb	r2, [r3, #1]	@ zero_extendqisi2
+ARM GAS  /tmp/ccrQqemJ.s 			page 26
+
+
+ 1037 0014 FF2A     		cmp	r2, #255
+ 1038 0016 03D0     		beq	.L96
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1039              		.loc 1 60 13 is_stmt 1 view .LVU309
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1040              		.loc 1 60 15 is_stmt 0 view .LVU310
+ 1041 0018 1A78     		ldrb	r2, [r3]	@ zero_extendqisi2
+ 1042 001a 8242     		cmp	r2, r0
+  61:src/led_player.c ****         }
+ 1043              		.loc 1 61 13 is_stmt 1 view .LVU311
+  61:src/led_player.c ****         }
+ 1044              		.loc 1 61 38 is_stmt 0 view .LVU312
+ 1045 001c 08BF     		it	eq
+ 1046 001e 9970     		strbeq	r1, [r3, #2]
+ 1047              	.L96:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1048              		.loc 1 58 45 is_stmt 1 discriminator 2 view .LVU313
+ 1049              	.LVL74:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1050              		.loc 1 58 30 discriminator 1 view .LVU314
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1051              		.loc 1 59 13 view .LVU315
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1052              		.loc 1 59 15 is_stmt 0 view .LVU316
+ 1053 0020 5A7A     		ldrb	r2, [r3, #9]	@ zero_extendqisi2
+ 1054 0022 FF2A     		cmp	r2, #255
+ 1055 0024 03D0     		beq	.L97
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1056              		.loc 1 60 13 is_stmt 1 view .LVU317
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1057              		.loc 1 60 15 is_stmt 0 view .LVU318
+ 1058 0026 1A7A     		ldrb	r2, [r3, #8]	@ zero_extendqisi2
+ 1059 0028 8242     		cmp	r2, r0
+  61:src/led_player.c ****         }
+ 1060              		.loc 1 61 13 is_stmt 1 view .LVU319
+  61:src/led_player.c ****         }
+ 1061              		.loc 1 61 38 is_stmt 0 view .LVU320
+ 1062 002a 08BF     		it	eq
+ 1063 002c 9972     		strbeq	r1, [r3, #10]
+ 1064              	.L97:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1065              		.loc 1 58 45 is_stmt 1 discriminator 2 view .LVU321
+ 1066              	.LVL75:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1067              		.loc 1 58 30 discriminator 1 view .LVU322
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1068              		.loc 1 59 13 view .LVU323
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1069              		.loc 1 59 15 is_stmt 0 view .LVU324
+ 1070 002e 5A7C     		ldrb	r2, [r3, #17]	@ zero_extendqisi2
+ 1071 0030 FF2A     		cmp	r2, #255
+ 1072 0032 03D0     		beq	.L98
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1073              		.loc 1 60 13 is_stmt 1 view .LVU325
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1074              		.loc 1 60 15 is_stmt 0 view .LVU326
+ 1075 0034 1A7C     		ldrb	r2, [r3, #16]	@ zero_extendqisi2
+ARM GAS  /tmp/ccrQqemJ.s 			page 27
+
+
+ 1076 0036 8242     		cmp	r2, r0
+  61:src/led_player.c ****         }
+ 1077              		.loc 1 61 13 is_stmt 1 view .LVU327
+  61:src/led_player.c ****         }
+ 1078              		.loc 1 61 38 is_stmt 0 view .LVU328
+ 1079 0038 08BF     		it	eq
+ 1080 003a 9974     		strbeq	r1, [r3, #18]
+ 1081              	.L98:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1082              		.loc 1 58 45 is_stmt 1 discriminator 2 view .LVU329
+ 1083              	.LVL76:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1084              		.loc 1 58 30 discriminator 1 view .LVU330
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1085              		.loc 1 59 13 view .LVU331
+  59:src/led_player.c ****             if(led_keys[i].notes[j].channel != channel)continue;
+ 1086              		.loc 1 59 15 is_stmt 0 view .LVU332
+ 1087 003c 5A7E     		ldrb	r2, [r3, #25]	@ zero_extendqisi2
+ 1088 003e FF2A     		cmp	r2, #255
+ 1089 0040 03D0     		beq	.L99
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1090              		.loc 1 60 13 is_stmt 1 view .LVU333
+  60:src/led_player.c ****             led_keys[i].notes[j].vel = 0;
+ 1091              		.loc 1 60 15 is_stmt 0 view .LVU334
+ 1092 0042 1A7E     		ldrb	r2, [r3, #24]	@ zero_extendqisi2
+ 1093 0044 8242     		cmp	r2, r0
+  61:src/led_player.c ****         }
+ 1094              		.loc 1 61 13 is_stmt 1 view .LVU335
+  61:src/led_player.c ****         }
+ 1095              		.loc 1 61 38 is_stmt 0 view .LVU336
+ 1096 0046 08BF     		it	eq
+ 1097 0048 9976     		strbeq	r1, [r3, #26]
+ 1098              	.L99:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1099              		.loc 1 58 45 is_stmt 1 discriminator 2 view .LVU337
+ 1100              	.LVL77:
+  58:src/led_player.c ****             if(led_keys[i].notes[j].note == 255)continue;
+ 1101              		.loc 1 58 30 discriminator 1 view .LVU338
+ 1102              	.LBE56:
+  57:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 1103              		.loc 1 57 41 discriminator 2 view .LVU339
+  57:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 1104              		.loc 1 57 26 discriminator 1 view .LVU340
+ 1105 004a 2433     		adds	r3, r3, #36
+ 1106              	.LVL78:
+  57:src/led_player.c ****         for(uint8_t j = 0; j != MAX_NOTES; j++){
+ 1107              		.loc 1 57 26 is_stmt 0 discriminator 1 view .LVU341
+ 1108 004c 9C45     		cmp	ip, r3
+ 1109 004e E0D1     		bne	.L100
+ 1110              	.LBE55:
+ 1111              	.LBE54:
+ 1112              		.loc 1 189 1 view .LVU342
+ 1113 0050 7047     		bx	lr
+ 1114              	.L118:
+ 1115 0052 00BF     		.align	2
+ 1116              	.L117:
+ 1117 0054 00000000 		.word	led_keys
+ARM GAS  /tmp/ccrQqemJ.s 			page 28
+
+
+ 1118              		.cfi_endproc
+ 1119              	.LFE144:
+ 1121              		.section	.bss.prev_time.0,"aw",%nobits
+ 1122              		.align	2
+ 1125              	prev_time.0:
+ 1126 0000 00000000 		.space	4
+ 1127              		.section	.bss.led_keys,"aw",%nobits
+ 1128              		.align	2
+ 1131              	led_keys:
+ 1132 0000 00000000 		.space	1296
+ 1132      00000000 
+ 1132      00000000 
+ 1132      00000000 
+ 1132      00000000 
+ 1133              		.section	.rodata.led_mapping,"a"
+ 1134              		.align	2
+ 1137              	led_mapping:
+ 1138 0000 15161417 		.ascii	"\025\026\024\027\023\022\030\021\031\020\032\017\016"
+ 1138      13121811 
+ 1138      19101A0F 
+ 1138      0E
+ 1139 000d 1B0D1C0C 		.ascii	"\033\015\034\014\013\035\012\036\011\037\010\007 \006"
+ 1139      0B1D0A1E 
+ 1139      091F0807 
+ 1139      2006
+ 1140 001b 21050422 		.ascii	"!\005\004\"\003#\002\000\001"
+ 1140      03230200 
+ 1140      01
+ 1141              		.section	.rodata.channel_colors,"a"
+ 1142              		.align	2
+ 1145              	channel_colors:
+ 1146 0000 FF0000   		.ascii	"\377\000\000"
+ 1147 0003 FFAE00   		.ascii	"\377\256\000"
+ 1148 0006 99FF00   		.ascii	"\231\377\000"
+ 1149 0009 00FF11   		.ascii	"\000\377\021"
+ 1150 000c 00FFF2   		.ascii	"\000\377\362"
+ 1151 000f 006EFF   		.ascii	"\000n\377"
+ 1152 0012 0D00FF   		.ascii	"\015\000\377"
+ 1153 0015 9900FF   		.ascii	"\231\000\377"
+ 1154 0018 FF00E6   		.ascii	"\377\000\346"
+ 1155 001b 000000   		.ascii	"\000\000\000"
+ 1156 001e FF0084   		.ascii	"\377\000\204"
+ 1157 0021 FBFF00   		.ascii	"\373\377\000"
+ 1158 0024 B9B1FA   		.ascii	"\271\261\372"
+ 1159 0027 84FF82   		.ascii	"\204\377\202"
+ 1160 002a FF8282   		.ascii	"\377\202\202"
+ 1161 002d FFFFFF   		.ascii	"\377\377\377"
+ 1162              		.section	.rodata.damp,"a"
+ 1163              		.align	2
+ 1166              	damp:
+ 1167 0000 00000000 		.word	0
+ 1168 0004 D42B653D 		.word	1030040532
+ 1169 0008 1CEBE23D 		.word	1038281500
+ 1170 000c CC7F283E 		.word	1042841548
+ 1171 0010 AD695E3E 		.word	1046374829
+ 1172 0014 9A99893E 		.word	1049205146
+ 1173 0018 2F6EA33E 		.word	1050897967
+ARM GAS  /tmp/ccrQqemJ.s 			page 29
+
+
+ 1174 001c 96B2BC3E 		.word	1052553878
+ 1175 0020 CF66D53E 		.word	1054172879
+ 1176 0024 DB8AED3E 		.word	1055754971
+ 1177 0028 5C8F023F 		.word	1057132380
+ 1178 002c 34110E3F 		.word	1057886516
+ 1179 0030 F54A193F 		.word	1058622197
+ 1180 0034 9F3C243F 		.word	1059339423
+ 1181 0038 32E62E3F 		.word	1060038194
+ 1182 003c AE47393F 		.word	1060718510
+ 1183 0040 1361433F 		.word	1061380371
+ 1184 0044 61324D3F 		.word	1062023777
+ 1185 0048 99BB563F 		.word	1062648729
+ 1186 004c B9FC5F3F 		.word	1063255225
+ 1187 0050 C3F5683F 		.word	1063843267
+ 1188 0054 B5A6713F 		.word	1064412853
+ 1189 0058 910F7A3F 		.word	1064963985
+ 1190 005c 2B18813F 		.word	1065424939
+ 1191 0060 8104853F 		.word	1065682049
+ 1192 0064 CDCC883F 		.word	1065929933
+ 1193 0068 0D718C3F 		.word	1066168589
+ 1194 006c 41F18F3F 		.word	1066398017
+ 1195 0070 6A4D933F 		.word	1066618218
+ 1196 0074 8885963F 		.word	1066829192
+ 1197 0078 9A99993F 		.word	1067030938
+ 1198 007c A0899C3F 		.word	1067223456
+ 1199 0080 9B559F3F 		.word	1067406747
+ 1200 0084 8BFDA13F 		.word	1067580811
+ 1201 0088 6F81A43F 		.word	1067745647
+ 1202 008c 48E1A63F 		.word	1067901256
+ 1203 0090 151DA93F 		.word	1068047637
+ 1204 0094 D734AB3F 		.word	1068184791
+ 1205 0098 8D28AD3F 		.word	1068312717
+ 1206 009c 38F8AE3F 		.word	1068431416
+ 1207 00a0 D7A3B03F 		.word	1068540887
+ 1208 00a4 6B2BB23F 		.word	1068641131
+ 1209 00a8 F38EB33F 		.word	1068732147
+ 1210 00ac 70CEB43F 		.word	1068813936
+ 1211 00b0 E2E9B53F 		.word	1068886498
+ 1212 00b4 48E1B63F 		.word	1068949832
+ 1213 00b8 A2B4B73F 		.word	1069003938
+ 1214 00bc F163B83F 		.word	1069048817
+ 1215 00c0 35EFB83F 		.word	1069084469
+ 1216 00c4 6D56B93F 		.word	1069110893
+ 1217 00c8 9A99B93F 		.word	1069128090
+ 1218 00cc BBB8B93F 		.word	1069136059
+ 1219 00d0 D0B3B93F 		.word	1069134800
+ 1220 00d4 DB8AB93F 		.word	1069124315
+ 1221 00d8 D93DB93F 		.word	1069104601
+ 1222 00dc CDCCB83F 		.word	1069075661
+ 1223 00e0 B537B83F 		.word	1069037493
+ 1224 00e4 917EB73F 		.word	1068990097
+ 1225 00e8 62A1B63F 		.word	1068933474
+ 1226 00ec 27A0B53F 		.word	1068867623
+ 1227 00f0 E17AB43F 		.word	1068792545
+ 1228 00f4 9031B33F 		.word	1068708240
+ 1229 00f8 33C4B13F 		.word	1068614707
+ 1230 00fc CA32B03F 		.word	1068511946
+ARM GAS  /tmp/ccrQqemJ.s 			page 30
+
+
+ 1231 0100 567DAE3F 		.word	1068399958
+ 1232 0104 D7A3AC3F 		.word	1068278743
+ 1233 0108 4CA6AA3F 		.word	1068148300
+ 1234 010c B684A83F 		.word	1068008630
+ 1235 0110 143FA63F 		.word	1067859732
+ 1236 0114 67D5A33F 		.word	1067701607
+ 1237 0118 AE47A13F 		.word	1067534254
+ 1238 011c EA959E3F 		.word	1067357674
+ 1239 0120 1AC09B3F 		.word	1067171866
+ 1240 0124 3FC6983F 		.word	1066976831
+ 1241 0128 58A8953F 		.word	1066772568
+ 1242 012c 6666923F 		.word	1066559078
+ 1243 0130 69008F3F 		.word	1066336361
+ 1244 0134 60768B3F 		.word	1066104416
+ 1245 0138 4BC8873F 		.word	1065863243
+ 1246 013c 2BF6833F 		.word	1065612843
+ 1247 0140 0000803F 		.word	1065353216
+ 1248 0144 5E41783F 		.word	1064845662
+ 1249 0148 ED22713F 		.word	1064379117
+ 1250 014c BB9F6A3F 		.word	1063952315
+ 1251 0150 D2B2643F 		.word	1063563986
+ 1252 0154 3F575F3F 		.word	1063212863
+ 1253 0158 0C885A3F 		.word	1062897676
+ 1254 015c 4540563F 		.word	1062617157
+ 1255 0160 F77A523F 		.word	1062370039
+ 1256 0164 2C334F3F 		.word	1062155052
+ 1257 0168 F1634C3F 		.word	1061970929
+ 1258 016c 51084A3F 		.word	1061816401
+ 1259 0170 571B483F 		.word	1061690199
+ 1260 0174 1098463F 		.word	1061591056
+ 1261 0178 8779453F 		.word	1061517703
+ 1262 017c C7BA443F 		.word	1061468871
+ 1263 0180 DD56443F 		.word	1061443293
+ 1264 0184 D348443F 		.word	1061439699
+ 1265 0188 B68B443F 		.word	1061456822
+ 1266 018c 911A453F 		.word	1061493393
+ 1267 0190 6FF0453F 		.word	1061548143
+ 1268 0194 5E08473F 		.word	1061619806
+ 1269 0198 675D483F 		.word	1061707111
+ 1270 019c 97EA493F 		.word	1061808791
+ 1271 01a0 F9AA4B3F 		.word	1061923577
+ 1272 01a4 9A994D3F 		.word	1062050202
+ 1273 01a8 84B14F3F 		.word	1062187396
+ 1274 01ac C3ED513F 		.word	1062333891
+ 1275 01b0 6349543F 		.word	1062488419
+ 1276 01b4 70BF563F 		.word	1062649712
+ 1277 01b8 F54A593F 		.word	1062816501
+ 1278 01bc FEE65B3F 		.word	1062987518
+ 1279 01c0 968E5E3F 		.word	1063161494
+ 1280 01c4 CA3C613F 		.word	1063337162
+ 1281 01c8 A4EC633F 		.word	1063513252
+ 1282 01cc 3199663F 		.word	1063688497
+ 1283 01d0 7C3D693F 		.word	1063861628
+ 1284 01d4 90D46B3F 		.word	1064031376
+ 1285 01d8 7A596E3F 		.word	1064196474
+ 1286 01dc 45C7703F 		.word	1064355653
+ 1287 01e0 FC18733F 		.word	1064507644
+ARM GAS  /tmp/ccrQqemJ.s 			page 31
+
+
+ 1288 01e4 AC49753F 		.word	1064651180
+ 1289 01e8 6054773F 		.word	1064784992
+ 1290 01ec 2334793F 		.word	1064907811
+ 1291 01f0 02E47A3F 		.word	1065018370
+ 1292 01f4 075F7C3F 		.word	1065115399
+ 1293 01f8 3FA07D3F 		.word	1065197631
+ 1294 01fc B5A27E3F 		.word	1065263797
+ 1295 0200 75617F3F 		.word	1065312629
+ 1296 0204 8AD77F3F 		.word	1065342858
+ 1297              		.text
+ 1298              	.Letext0:
+ 1299              		.file 2 "/usr/arm-none-eabi/include/machine/_default_types.h"
+ 1300              		.file 3 "/usr/arm-none-eabi/include/sys/_stdint.h"
+ 1301              		.file 4 "src/leds.h"
+ 1302              		.file 5 "Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h"
+ARM GAS  /tmp/ccrQqemJ.s 			page 32
+
+
+DEFINED SYMBOLS
+                            *ABS*:00000000 led_player.c
+     /tmp/ccrQqemJ.s:24     .text.rgb_lighter:00000000 $t
+     /tmp/ccrQqemJ.s:30     .text.rgb_lighter:00000000 rgb_lighter
+     /tmp/ccrQqemJ.s:156    .text.rgb_lighter:0000008c $d
+     /tmp/ccrQqemJ.s:1166   .rodata.damp:00000000 damp
+     /tmp/ccrQqemJ.s:1145   .rodata.channel_colors:00000000 channel_colors
+     /tmp/ccrQqemJ.s:164    .text.led_player_init:00000000 $t
+     /tmp/ccrQqemJ.s:171    .text.led_player_init:00000000 led_player_init
+     /tmp/ccrQqemJ.s:244    .text.led_player_init:00000024 $d
+     /tmp/ccrQqemJ.s:1131   .bss.led_keys:00000000 led_keys
+     /tmp/ccrQqemJ.s:250    .text.led_player_update:00000000 $t
+     /tmp/ccrQqemJ.s:257    .text.led_player_update:00000000 led_player_update
+     /tmp/ccrQqemJ.s:540    .text.led_player_update:00000150 $d
+     /tmp/ccrQqemJ.s:1125   .bss.prev_time.0:00000000 prev_time.0
+     /tmp/ccrQqemJ.s:1137   .rodata.led_mapping:00000000 led_mapping
+     /tmp/ccrQqemJ.s:553    .text.led_player_note_on:00000000 $t
+     /tmp/ccrQqemJ.s:560    .text.led_player_note_on:00000000 led_player_note_on
+     /tmp/ccrQqemJ.s:723    .text.led_player_note_on:00000068 $d
+     /tmp/ccrQqemJ.s:730    .text.led_player_note_off:00000000 $t
+     /tmp/ccrQqemJ.s:737    .text.led_player_note_off:00000000 led_player_note_off
+     /tmp/ccrQqemJ.s:909    .text.led_player_note_off:00000090 $d
+     /tmp/ccrQqemJ.s:915    .text.led_player_test:00000000 $t
+     /tmp/ccrQqemJ.s:922    .text.led_player_test:00000000 led_player_test
+     /tmp/ccrQqemJ.s:993    .text.led_player_test:0000005c $d
+     /tmp/ccrQqemJ.s:999    .text.led_player_handle_cc:00000000 $t
+     /tmp/ccrQqemJ.s:1006   .text.led_player_handle_cc:00000000 led_player_handle_cc
+     /tmp/ccrQqemJ.s:1117   .text.led_player_handle_cc:00000054 $d
+     /tmp/ccrQqemJ.s:1122   .bss.prev_time.0:00000000 $d
+     /tmp/ccrQqemJ.s:1128   .bss.led_keys:00000000 $d
+     /tmp/ccrQqemJ.s:1134   .rodata.led_mapping:00000000 $d
+     /tmp/ccrQqemJ.s:1142   .rodata.channel_colors:00000000 $d
+     /tmp/ccrQqemJ.s:1163   .rodata.damp:00000000 $d
+
+UNDEFINED SYMBOLS
+__aeabi_ui2d
+__aeabi_dmul
+__aeabi_d2uiz
+leds_init
+HAL_GetTick
+leds_set
+leds_show
+leds_clear
+leds_color
+HAL_Delay

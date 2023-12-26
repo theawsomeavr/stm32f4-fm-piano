@@ -1,0 +1,154 @@
+Channel 1
+{
+    attack_max  1.000000 1.000000
+    attack      0.000000 0.000000
+    decay       0.000000 0.000000
+    sustain     1.000000 1.000000
+    release     0.000000 0.000000
+    multiplier  1.000000 1.000000
+    waveform    0.000000 0.000000
+}
+Channel 2
+{
+    attack_max  1.000000 0.850000
+    attack      0.000000 0.000000
+    decay       0.180000 0.188000
+    sustain     1.000000 0.070000
+    release     0.140000 0.210000
+    multiplier  6.000000 1.000000
+    waveform    0.000000 0.000000
+}
+Channel 3
+{
+    attack_max  0.560000 0.090000
+    attack      0.150000 0.000000
+    decay       0.180000 0.000000
+    sustain     0.340000 0.040000
+    release     0.070000 0.050000
+    multiplier  1.000000 1.000000
+    waveform    3.000000 3.000000
+}
+Channel 4
+{
+    attack_max  0.630000 0.090000
+    attack      0.190000 0.000000
+    decay       0.180000 0.000000
+    sustain     0.580000 0.070000
+    release     0.070000 0.050000
+    multiplier  0.500000 1.000000
+    waveform    3.000000 3.000000
+}
+Channel 5
+{
+    attack_max  1.000000 0.350000
+    attack      0.000000 0.000000
+    decay       0.160000 0.070000
+    sustain     0.660000 0.080000
+    release     0.030000 0.160000
+    multiplier  4.000000 5.000000
+    waveform    2.000000 0.000000
+}
+Channel 6
+{
+    attack_max  1.000000 0.390000
+    attack      0.000000 0.000000
+    decay       0.000000 0.100000
+    sustain     1.000000 0.190000
+    release     0.050000 0.200000
+    multiplier  3.000000 1.000000
+    waveform    0.000000 2.000000
+}
+Channel 7
+{
+    attack_max  0.850000 0.540000
+    attack      0.000000 0.000000
+    decay       0.135000 0.510000
+    sustain     0.620000 0.090000
+    release     0.019000 0.200000
+    multiplier  4.000000 3.000000
+    waveform    0.000000 2.000000
+}
+Channel 8
+{
+    attack_max  1.000000 0.390000
+    attack      0.000000 0.000000
+    decay       0.000000 0.100000
+    sustain     1.000000 0.190000
+    release     0.050000 0.200000
+    multiplier  3.000000 1.000000
+    waveform    0.000000 2.000000
+}
+Channel 9
+{
+    attack_max  0.740000 0.000000
+    attack      0.070000 0.000000
+    decay       0.135000 0.000000
+    sustain     0.520000 0.110000
+    release     0.019000 0.200000
+    multiplier  1.000000 3.000000
+    waveform    1.000000 0.000000
+}
+Channel 10
+{
+    volume      1.000000
+}
+Channel 11
+{
+    attack_max  0.340000 1.000000
+    attack      0.000000 0.000000
+    decay       0.000000 0.000000
+    sustain     0.410000 1.000000
+    release     0.000000 0.000000
+    multiplier  1.000000 1.000000
+    waveform    0.000000 0.000000
+}
+Channel 12
+{
+    attack_max  0.230000 1.000000
+    attack      0.000000 0.000000
+    decay       0.000000 0.000000
+    sustain     0.190000 1.000000
+    release     0.000000 0.000000
+    multiplier  1.000000 1.000000
+    waveform    0.000000 0.000000
+}
+Channel 13
+{
+    attack_max  1.000000 0.433000
+    attack      0.000000 0.000000
+    decay       0.000000 0.213000
+    sustain     1.000000 0.080000
+    release     0.070000 0.210000
+    multiplier  2.000000 6.000000
+    waveform    0.000000 1.000000
+}
+Channel 14
+{
+    attack_max  1.000000 0.390000
+    attack      0.000000 0.000000
+    decay       0.000000 0.100000
+    sustain     1.000000 0.190000
+    release     0.050000 0.200000
+    multiplier  3.000000 2.000000
+    waveform    0.000000 2.000000
+}
+Channel 15
+{
+    attack_max  0.640000 0.540000
+    attack      0.000000 0.000000
+    decay       0.135000 0.510000
+    sustain     0.500000 0.090000
+    release     0.019000 0.200000
+    multiplier  4.000000 3.000000
+    waveform    0.000000 2.000000
+}
+Channel 16
+{
+    attack_max  1.000000 0.583000
+    attack      0.000000 0.000000
+    decay       0.140000 0.150000
+    sustain     0.660000 0.034000
+    release     0.060000 0.160000
+    multiplier  4.000000 5.000000
+    waveform    0.000000 0.000000
+}
