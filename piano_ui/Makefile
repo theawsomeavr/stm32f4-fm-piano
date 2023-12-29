@@ -1,7 +1,7 @@
 all: m
-CC = x86_64-w64-mingw32-g++
-#CC = g++
-OUT_NAME = piano.exe
+#CC = x86_64-w64-mingw32-g++
+CC = g++
+OUT_NAME = piano
 OBJDIR  = obj
 GOYCO_CPP_LIBS ?= ./libs
 
@@ -15,8 +15,8 @@ INCLUDE_DIR = $(SOURCE_DIR) \
 $(GOYCO_CPP_LIBS)/raylib
 
 FLAGS = -O3 $(foreach I_dir,$(INCLUDE_DIR),$(addsuffix $(I_dir),-I)) -std=c++20
-LFLAGS = -static -static-libgcc -static-libstdc++ $(GOYCO_CPP_LIBS)/raylib/libraylib_win.a -lwinmm -lgdi32
-#LFLAGS = $(GOYCO_CPP_LIBS)/raylib/libraylib_linux.a -lasound
+#LFLAGS = -static -static-libgcc -static-libstdc++ $(GOYCO_CPP_LIBS)/raylib/libraylib_win.a -lwinmm -lgdi32
+LFLAGS = $(GOYCO_CPP_LIBS)/raylib/libraylib_linux.a -lasound
 
 SOURCES = $(foreach dir,$(SOURCE_DIR),$(wildcard $(dir)/*.cpp))
 OBJECTS = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(basename $(SOURCES)))))
