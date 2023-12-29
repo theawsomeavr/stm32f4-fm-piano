@@ -224,6 +224,7 @@ int main(const int argc, const char **argv) {
         if(IsKeyPressed(KEY_RIGHT))goyco_MIDI_rseek(5000);
         if(IsKeyPressed(KEY_SPACE))goyco_MIDI_pause();
 
+        if(IsKeyPressed(KEY_R))goyco_MIDI_send(MIDICmd::msg({0xf0, 'R', 'M', 0xf7}));
         if(IsKeyPressed(KEY_Y))rack.yank();
         if(IsKeyPressed(KEY_P)){
             rack.put();

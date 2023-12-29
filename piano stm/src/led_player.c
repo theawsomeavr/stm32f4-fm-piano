@@ -120,12 +120,12 @@ static void led_player_tick(){
             notes[j].tick++;
         }
 
-        rgb[0] *= 0.25;
-        rgb[1] *= 0.25;
-        rgb[2] *= 0.25;
-        if(rgb[0] > 1)rgb[0] = 0;
-        if(rgb[1] > 1)rgb[1] = 0;
-        if(rgb[2] > 1)rgb[2] = 0;
+        rgb[0] *= 0.25f;
+        rgb[1] *= 0.25f;
+        rgb[2] *= 0.25f;
+        if(rgb[0] > 1.0f)rgb[0] = 1.0f;
+        if(rgb[1] > 1.0f)rgb[1] = 1.0f;
+        if(rgb[2] > 1.0f)rgb[2] = 1.0f;
 
         LedColor c = {200 * rgb[0], 200 * rgb[1], 200 * rgb[2]};
         leds_set(c, led_mapping[i]);

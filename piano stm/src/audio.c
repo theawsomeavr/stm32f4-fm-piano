@@ -173,6 +173,7 @@ static void audio_start_voice(AudioVoice *v, uint8_t channel, uint8_t note, uint
 
 static void audio_start_perc(PercVoice *v, uint8_t note, uint8_t volume){
     ChannelSettings *c = channel_settings + 9;
+    float speed = 1.0f;
     v->ev_tick = HAL_GetTick();
     v->note = note;
     v->inc = 0;
@@ -192,8 +193,8 @@ static void audio_start_perc(PercVoice *v, uint8_t note, uint8_t volume){
         case 42: case 44:
             SAMPLE(closed_hihat);
             break;
-        case 37:
-            //SAMPLE(stick);
+        case 39:
+            SAMPLE(clap);
             break;
         case 46:
             SAMPLE(open_hi_hat);
@@ -206,66 +207,33 @@ static void audio_start_perc(PercVoice *v, uint8_t note, uint8_t volume){
             break;
         case 50:
             SAMPLE(tomm);
+            speed = 1.5;
             break;
         case 48:
             SAMPLE(tomm);
+            speed = 1.2;
             break;
         case 47:
             SAMPLE(tomm);
             break;
         case 45:
             SAMPLE(tomm);
+            speed = 0.8;
             break;
         case 43:
             SAMPLE(tomm);
+            speed = 0.6;
             break;
         case 41:
             SAMPLE(tomm);
+            speed = 0.4;
             break;
         default:
             v->sample = safe_sample;
             v->size = 0;
-
-#if 0
-      if (mididata == 50) {
-        set_percussion(a,tomm,sizeof(tomm),mididata,velocity);
-		percussion_increment[a]=pecussion_constant*1.5;
-		LEDS_volume[high_tomm]=255;
-        LEDS_color_offset[high_tomm] += color_offset;
-      }
-	  else if (mididata == 48) {
-        set_percussion(a,tomm,sizeof(tomm),mididata,velocity);
-		percussion_increment[a]=pecussion_constant*1.2;
-		LEDS_volume[highmid_tomm]=255;
-         LEDS_color_offset[highmid_tomm] += color_offset;
-      }
-	  else if (mididata == 47) {
-        set_percussion(a,tomm,sizeof(tomm),mididata,velocity);
-		LEDS_volume[highlow_tomm]=255;
-         LEDS_color_offset[highlow_tomm] += color_offset;
-      }
-	  else if (mididata == 45) {
-        set_percussion(a,tomm,sizeof(tomm),mididata,velocity);
-		percussion_increment[a]=pecussion_constant*0.8;
-		LEDS_volume[lowmid_tomm]=255;
-        LEDS_color_offset[lowmid_tomm] += color_offset;
-      }
-	  else if (mididata == 43) {
-        set_percussion(a,tomm,sizeof(tomm),mididata,velocity);
-		percussion_increment[a]=pecussion_constant*0.6;
-		LEDS_volume[low_tomm]=255;
-        LEDS_color_offset[low_tomm] += color_offset;
-      }
-	  else if (mididata == 41) {
-        set_percussion(a,tomm,sizeof(tomm),mididata,velocity);
-		percussion_increment[a]=pecussion_constant*0.4;
-		LEDS_volume[low_tomm]=255;
-        LEDS_color_offset[low_tomm] += color_offset;
-      }
-
-#endif
     }
-    v->inc = 0.512f * 380;
+#undef SAMPLE
+    v->inc = 0.512f * 380 * speed;
     v->volume = (volume / 127.0f) * global_perc_vol * c->volume;
 }
 
@@ -278,8 +246,9 @@ static void audio_play_perc(uint8_t note, uint8_t vel){
         v = perc_voices + i;
         //If the sample is done in the current channel, use it
         if((v->acc >> 8) > v->size)goto assign;
-
         if(v->note == note)same_note = v;
+        //Never overwrite the voice playing the cymbals
+        if(v->sample == crash || v->sample == ride)continue;
 
         uint32_t lifetime = cur_tick - v->ev_tick;
         if(lifetime >= max_lifetime){
@@ -417,7 +386,6 @@ void audio_update(){
 }
 
 void audio_play_note(uint8_t channel, uint8_t note, uint8_t vel){
-    //Ignore MIDI channel 10 (percussion)
     if(channel == 9){
         audio_play_perc(note, vel);
         return;
@@ -569,4 +537,25 @@ float audio_get_sample_vol(){
     }
 
     return acc * (1.0f / (float)(AUDIO_BUF_SIZE / 2) / 256.0f);
+}
+
+void audio_get_drums(float *playing_time){
+#define SAMPLE(s) if(v->sample == s)
+
+    for(uint8_t i = 0; i != 8; i++){ playing_time[i] = 0; }
+    for(uint8_t i = 0; i != PERC_CHANS; i++){
+        PercVoice *v = perc_voices + i;
+        uint8_t idx = 0;
+        //Skip silenced voices
+        if((v->acc >> 8) > v->size)continue;
+        SAMPLE(tomm)idx = 0;
+        SAMPLE(ride)idx = 1;
+        SAMPLE(clap)idx = 2;
+        SAMPLE(crash)idx = 3;
+        SAMPLE(open_hi_hat)idx = 4;
+        SAMPLE(closed_hihat)idx = 5;
+        SAMPLE(kick)idx = 6;
+        SAMPLE(snare)idx = 7;
+        playing_time[idx] = 1.0f - ((v->acc >> 8) / (float)v->size); 
+    }
 }

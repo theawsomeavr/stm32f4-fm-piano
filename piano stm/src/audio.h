@@ -25,6 +25,7 @@ void audio_stop_note(uint8_t channel, uint8_t note);
 void audio_update_patch(uint8_t channel, uint8_t op, AudioSetting setting, float v);
 void audio_update_perc(PercSetting setting, float v);
 void audio_handle_cc(uint8_t channel, uint8_t cmd, uint8_t value);
+void audio_get_drums(float *playing_time);
 float audio_get_sample_vol();
 
 #endif

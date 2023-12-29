@@ -44,6 +44,14 @@ static inline RanVec3 ran_v3_div(RanVec3 v1, RanVec3 v2){
     return (RanVec3){v1.x / v2.x, v1.y / v2.y, v1.z / v2.z};
 }
 
+static inline RanVec3 ran_v3_mix(RanVec3 v1, RanVec3 v2, float fact){
+    return (RanVec3){
+        .x = v1.x * (1.0f - fact) + v2.x * fact,
+        .y = v1.y * (1.0f - fact) + v2.y * fact,
+        .z = v1.z * (1.0f - fact) + v2.z * fact,
+    };
+}
+
 static inline float ran_fast_sin(float x){
     return sine_table[(int)(x * (4095 / 2.0f / RAN_PI)) & 0xfff];
 }
@@ -60,6 +68,7 @@ static inline RanVec3 ran_v3_rot(RanVec3 v, RanVec3 euler){
     float c_y = ran_fast_cos(euler.y);
     float c_z = ran_fast_cos(euler.z);
 
+    //Will the compiler optimize out similar expresions? (e.g. "v.x * c_z + v.y * s_z")
     return (RanVec3){
         .x = (v.x * c_z + v.y * s_z) * c_y + v.z * s_y,
         .y = (v.x * -s_z + v.y * c_z) * c_x +

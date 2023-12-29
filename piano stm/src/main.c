@@ -13,6 +13,7 @@ int main(void){
 
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN | RCC_AHB1ENR_GPIOHEN | RCC_AHB1ENR_GPIOAEN;
     GPIOC->MODER = (GPIOC->MODER & ~GPIO_MODER_MODER13) | (0b01 << GPIO_MODER_MODER13_Pos);
+    GPIOC->ODR |= GPIO_ODR_OD13;
 
     MX_USB_DEVICE_Init();
     led_player_init();
@@ -30,15 +31,18 @@ void USB_MIDI_dout(MIDIMesg *data){
     switch(data->cmd & 0xf0){
         case 0x90:
             if(data->arg2 == 0){
+                if((data->cmd & 0x0f) == 9)GPIOC->ODR |= GPIO_ODR_OD13;
                 audio_stop_note(data->cmd & 0x0f, data->arg1);
                 led_player_note_off(data->cmd & 0x0f, data->arg1);
             }
             else {
+                if((data->cmd & 0x0f) == 9)GPIOC->ODR &= ~GPIO_ODR_OD13;
                 audio_play_note(data->cmd & 0x0f, data->arg1, data->arg2);
                 led_player_note_on(data->cmd & 0x0f, data->arg1, data->arg2);
             }
             break;
         case 0x80:
+            if((data->cmd & 0x0f) == 9)GPIOC->ODR |= GPIO_ODR_OD13;
             audio_stop_note(data->cmd & 0x0f, data->arg1);
             led_player_note_off(data->cmd & 0x0f, data->arg1);
             break;
@@ -68,8 +72,13 @@ void USB_MIDI_sysex(uint8_t *data, uint16_t size){
     data++;
     size--;
 
+    if(*(uint16_t *)data == *(uint16_t *)"RM" && size == 0x03){
+        graphics_cycle_drawer();
+        return;
+    }
     if(size < 4)return;
     if(*(uint16_t *)data != *(uint16_t *)"TH")return;
+
     memset(buf, 0, 16);
     data += 2;
     size -= 2;

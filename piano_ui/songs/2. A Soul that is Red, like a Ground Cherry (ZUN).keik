@@ -30,10 +30,10 @@ Channel 3
 }
 Channel 4
 {
-    attack_max  0.630000 0.090000
-    attack      0.190000 0.000000
+    attack_max  0.860000 0.090000
+    attack      0.140000 0.000000
     decay       0.180000 0.000000
-    sustain     0.580000 0.070000
+    sustain     0.730000 0.070000
     release     0.070000 0.050000
     multiplier  0.500000 1.000000
     waveform    3.000000 3.000000
